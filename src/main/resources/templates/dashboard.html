@@ -15,6 +15,7 @@
         </div>
         <nav class="nav-menu">
             <a th:href="@{/dashboard}" class="active">오늘 출근 현황</a>
+            <a th:href="@{/attendance/monthly}">월별 출근 현황</a>
             <a th:href="@{/employees}">직원 목록</a>
             <a th:href="@{/settings/location}">회사 위치 설정</a>
         </nav>
@@ -34,34 +35,48 @@
         </section>
 
         <section class="card-grid">
-            <article class="stat-card">
-                <span>전체 직원</span>
-                <strong th:text="${summary.totalEmployees()}">0</strong>
-            </article>
-            <article class="stat-card">
-                <span>정상 출근</span>
-                <strong th:text="${summary.presentCount()}">0</strong>
-            </article>
-            <article class="stat-card warning">
-                <span>지각</span>
-                <strong th:text="${summary.lateCount()}">0</strong>
-            </article>
-            <article class="stat-card danger">
-                <span>미출근</span>
-                <strong th:text="${summary.absentCount()}">0</strong>
-            </article>
-            <article class="stat-card">
-                <span>퇴근 완료</span>
-                <strong th:text="${summary.checkedOutCount()}">0</strong>
-            </article>
+            <a th:href="@{/dashboard}" class="stat-link">
+                <article class="stat-card" th:classappend="${selectedFilter == 'ALL'} ? ' selected'">
+                    <span>전체 직원</span>
+                    <strong th:text="${summary.totalEmployees()}">0</strong>
+                </article>
+            </a>
+            <a th:href="@{/dashboard(filter='PRESENT')}" class="stat-link">
+                <article class="stat-card" th:classappend="${selectedFilter == 'PRESENT'} ? ' selected'">
+                    <span>정상 출근</span>
+                    <strong th:text="${summary.presentCount()}">0</strong>
+                </article>
+            </a>
+            <a th:href="@{/dashboard(filter='LATE')}" class="stat-link">
+                <article class="stat-card warning" th:classappend="${selectedFilter == 'LATE'} ? ' selected'">
+                    <span>지각</span>
+                    <strong th:text="${summary.lateCount()}">0</strong>
+                </article>
+            </a>
+            <a th:href="@{/dashboard(filter='ABSENT')}" class="stat-link">
+                <article class="stat-card danger" th:classappend="${selectedFilter == 'ABSENT'} ? ' selected'">
+                    <span>미출근</span>
+                    <strong th:text="${summary.absentCount()}">0</strong>
+                </article>
+            </a>
+            <a th:href="@{/dashboard(filter='CHECKED_OUT')}" class="stat-link">
+                <article class="stat-card" th:classappend="${selectedFilter == 'CHECKED_OUT'} ? ' selected'">
+                    <span>퇴근 완료</span>
+                    <strong th:text="${summary.checkedOutCount()}">0</strong>
+                </article>
+            </a>
         </section>
 
         <section class="panel">
             <div class="panel-header">
-                <h2>실시간 출근 목록</h2>
-                <span class="pill neutral" th:text="'총 ' + ${summary.totalEmployees()} + '명'">총 0명</span>
+                <h2 th:text="${selectedFilterLabel} + ' 목록'">실시간 출근 목록</h2>
+                <div class="button-row">
+                    <span class="pill neutral" th:text="'총 ' + ${#lists.size(recentAttendances)} + '명'">총 0명</span>
+                    <a th:if="${selectedFilter != 'ALL'}" th:href="@{/dashboard}" class="ghost-link small-link">전체 보기</a>
+                </div>
             </div>
-            <table>
+            <div class="empty-state" th:if="${#lists.isEmpty(recentAttendances)}">선택한 조건에 해당하는 직원이 없습니다.</div>
+            <table th:if="${!#lists.isEmpty(recentAttendances)}">
                 <thead>
                 <tr>
                     <th>사번</th>

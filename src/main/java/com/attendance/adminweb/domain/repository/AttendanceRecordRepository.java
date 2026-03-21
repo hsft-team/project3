@@ -11,5 +11,10 @@ public interface AttendanceRecordRepository extends JpaRepository<AttendanceReco
     @EntityGraph(attributePaths = "employee")
     List<AttendanceRecord> findAllByEmployeeCompanyIdAndAttendanceDate(Long companyId, LocalDate attendanceDate);
 
+    @EntityGraph(attributePaths = "employee")
+    List<AttendanceRecord> findAllByEmployeeCompanyIdAndAttendanceDateBetween(Long companyId,
+                                                                               LocalDate startDate,
+                                                                               LocalDate endDate);
+
     boolean existsByEmployeeId(Long employeeId);
 }

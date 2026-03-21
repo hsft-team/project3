@@ -17,22 +17,48 @@ import com.attendance.adminweb.model.CompanyLocationView;
 import com.attendance.adminweb.model.DashboardSummary;
 import com.attendance.adminweb.model.EmployeeForm;
 import com.attendance.adminweb.model.EmployeeRow;
+import com.attendance.adminweb.model.EmployeeUploadResult;
+import com.attendance.adminweb.model.MonthlyAttendanceEmployeeRow;
+import com.attendance.adminweb.model.MonthlyAttendanceRecordRow;
+import com.attendance.adminweb.model.MonthlyAttendanceSummary;
 import jakarta.persistence.EntityNotFoundException;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.stereotype.Service;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @Transactional(readOnly = true)
 public class AdminService {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd");
+    private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy년 M월");
+    private static final DataFormatter DATA_FORMATTER = new DataFormatter();
 
     private final EmployeeRepository employeeRepository;
     private final AttendanceRecordRepository attendanceRecordRepository;
@@ -81,7 +107,7 @@ public class AdminService {
         return new DashboardSummary(total, present, late, absent, checkedOut);
     }
 
-    public List<AttendanceRow> getTodayAttendances(String employeeCode) {
+    public List<AttendanceRow> getTodayAttendances(String employeeCode, String filter) {
         List<Employee> employees = getCompanyEmployees(employeeCode);
         Map<Long, AttendanceRecord> recordsByEmployeeId = getTodayRecordsByEmployee(employees);
 
@@ -99,6 +125,82 @@ public class AdminService {
                             buildNote(record)
                     );
                 })
+                .filter(row -> matchesFilter(row, filter))
+                .toList();
+    }
+
+    public MonthlyAttendanceSummary getMonthlyAttendanceSummary(String employeeCode, YearMonth yearMonth) {
+        List<Employee> employees = getCompanyEmployees(employeeCode);
+        List<AttendanceRecord> records = getMonthlyRecords(employeeCode, yearMonth);
+        Set<Long> attendedEmployeeIds = records.stream()
+                .map(record -> record.getEmployee().getId())
+                .collect(Collectors.toSet());
+
+        int lateCount = (int) records.stream()
+                .filter(AttendanceRecord::isLate)
+                .count();
+        int checkedOutCount = (int) records.stream()
+                .filter(record -> record.getStatus() == AttendanceStatus.CHECKED_OUT)
+                .count();
+
+        return new MonthlyAttendanceSummary(
+                yearMonth.format(MONTH_FORMATTER),
+                employees.size(),
+                attendedEmployeeIds.size(),
+                records.size(),
+                lateCount,
+                checkedOutCount
+        );
+    }
+
+    public List<MonthlyAttendanceEmployeeRow> getMonthlyAttendanceEmployees(String employeeCode, YearMonth yearMonth) {
+        List<Employee> employees = getCompanyEmployees(employeeCode);
+        Map<Long, List<AttendanceRecord>> recordsByEmployeeId = getMonthlyRecords(employeeCode, yearMonth).stream()
+                .collect(Collectors.groupingBy(record -> record.getEmployee().getId()));
+
+        return employees.stream()
+                .map(employee -> {
+                    List<AttendanceRecord> records = recordsByEmployeeId.getOrDefault(employee.getId(), List.of());
+                    AttendanceRecord lastRecord = records.stream()
+                            .max(Comparator.comparing(AttendanceRecord::getAttendanceDate)
+                                    .thenComparing(AttendanceRecord::getCheckInTime))
+                            .orElse(null);
+
+                    int lateDays = (int) records.stream()
+                            .filter(AttendanceRecord::isLate)
+                            .count();
+                    int checkedOutDays = (int) records.stream()
+                            .filter(record -> record.getStatus() == AttendanceStatus.CHECKED_OUT)
+                            .count();
+
+                    return new MonthlyAttendanceEmployeeRow(
+                            employee.getEmployeeCode(),
+                            employee.getName(),
+                            employee.getRole().name(),
+                            records.size(),
+                            lateDays,
+                            checkedOutDays,
+                            lastRecord == null ? "-" : lastRecord.getAttendanceDate().format(DATE_FORMATTER),
+                            lastRecord == null ? AttendanceState.ABSENT : toState(lastRecord)
+                    );
+                })
+                .toList();
+    }
+
+    public List<MonthlyAttendanceRecordRow> getMonthlyAttendanceRecords(String employeeCode, YearMonth yearMonth) {
+        return getMonthlyRecords(employeeCode, yearMonth).stream()
+                .sorted(Comparator.comparing(AttendanceRecord::getAttendanceDate).reversed()
+                        .thenComparing(AttendanceRecord::getCheckInTime, Comparator.reverseOrder()))
+                .map(record -> new MonthlyAttendanceRecordRow(
+                        record.getAttendanceDate().format(DATE_FORMATTER),
+                        record.getEmployee().getEmployeeCode(),
+                        record.getEmployee().getName(),
+                        record.getEmployee().getRole().name(),
+                        toState(record),
+                        formatCheckIn(record),
+                        formatCheckOut(record),
+                        buildNote(record)
+                ))
                 .toList();
     }
 
@@ -132,6 +234,51 @@ public class AdminService {
     public EmployeeForm getEmployeeFormForEdit(String employeeCode, Long employeeId) {
         Employee employee = getEditableEmployee(employeeCode, employeeId);
         return EmployeeForm.from(employee);
+    }
+
+    public byte[] createEmployeeUploadTemplate() {
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("employees");
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setFillForegroundColor((short) 22);
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"사번", "이름", "권한", "비밀번호"};
+            for (int index = 0; index < headers.length; index++) {
+                Cell cell = headerRow.createCell(index);
+                cell.setCellValue(headers[index]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            Row sampleRow1 = sheet.createRow(1);
+            sampleRow1.createCell(0).setCellValue("EMP004");
+            sampleRow1.createCell(1).setCellValue("김서준");
+            sampleRow1.createCell(2).setCellValue("EMPLOYEE");
+            sampleRow1.createCell(3).setCellValue("password1234");
+
+            Row sampleRow2 = sheet.createRow(2);
+            sampleRow2.createCell(0).setCellValue("EMP005");
+            sampleRow2.createCell(1).setCellValue("박소연");
+            sampleRow2.createCell(2).setCellValue("ADMIN");
+            sampleRow2.createCell(3).setCellValue("securepass1");
+
+            for (int index = 0; index < headers.length; index++) {
+                sheet.autoSizeColumn(index);
+                sheet.setColumnWidth(index, Math.max(sheet.getColumnWidth(index), 4200));
+            }
+
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException exception) {
+            throw new IllegalStateException("엑셀 샘플 파일을 생성할 수 없습니다.", exception);
+        }
     }
 
     public CompanyLocationView getCompanyLocation(String employeeCode) {
@@ -219,6 +366,61 @@ public class AdminService {
         employeeRepository.delete(employee);
     }
 
+    @Transactional
+    public EmployeeUploadResult uploadEmployees(String adminEmployeeCode, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("업로드할 엑셀 파일을 선택해 주세요.");
+        }
+
+        Employee admin = getEmployeeByCode(adminEmployeeCode);
+        Set<String> existingCodes = employeeRepository.findAllByCompanyIdOrderByNameAsc(admin.getCompany().getId()).stream()
+                .map(Employee::getEmployeeCode)
+                .collect(Collectors.toCollection(HashSet::new));
+        List<String> failureMessages = new ArrayList<>();
+        int successCount = 0;
+
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getNumberOfSheets() == 0 ? null : workbook.getSheetAt(0);
+            if (sheet == null) {
+                throw new IllegalArgumentException("엑셀 시트가 비어 있습니다.");
+            }
+
+            for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                Row row = sheet.getRow(rowIndex);
+                if (isEmptyRow(row)) {
+                    continue;
+                }
+
+                String employeeCode = readCell(row, 0);
+                String name = readCell(row, 1);
+                String roleValue = readCell(row, 2).toUpperCase();
+                String password = readCell(row, 3);
+
+                try {
+                    validateUploadRow(rowIndex + 1, employeeCode, name, roleValue, password, existingCodes);
+                    Employee employee = new Employee(
+                            employeeCode,
+                            name,
+                            passwordEncoder.encode(password),
+                            EmployeeRole.valueOf(roleValue),
+                            admin.getCompany()
+                    );
+                    employeeRepository.saveAndFlush(employee);
+                    existingCodes.add(employeeCode);
+                    successCount++;
+                } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+                    failureMessages.add(exception.getMessage());
+                }
+            }
+        } catch (IOException exception) {
+            throw new IllegalArgumentException("엑셀 파일을 읽는 중 오류가 발생했습니다.");
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("지원하지 않는 엑셀 파일 형식입니다. .xlsx 파일을 사용해 주세요.");
+        }
+
+        return new EmployeeUploadResult(successCount, failureMessages);
+    }
+
     private List<Employee> getCompanyEmployees(String employeeCode) {
         Employee admin = getEmployeeByCode(employeeCode);
         return employeeRepository.findAllByCompanyIdOrderByNameAsc(admin.getCompany().getId());
@@ -252,6 +454,58 @@ public class AdminService {
         }
     }
 
+    private void validateUploadRow(int rowNumber,
+                                   String employeeCode,
+                                   String name,
+                                   String roleValue,
+                                   String password,
+                                   Set<String> existingCodes) {
+        if (employeeCode.isBlank()) {
+            throw new IllegalArgumentException(rowNumber + "행: 사번을 입력해 주세요.");
+        }
+        if (employeeCode.length() > 50) {
+            throw new IllegalArgumentException(rowNumber + "행: 사번은 50자 이하여야 합니다.");
+        }
+        if (existingCodes.contains(employeeCode) || employeeRepository.existsByEmployeeCode(employeeCode)) {
+            throw new IllegalArgumentException(rowNumber + "행: 이미 사용 중인 사번입니다. (" + employeeCode + ")");
+        }
+        if (name.isBlank()) {
+            throw new IllegalArgumentException(rowNumber + "행: 이름을 입력해 주세요.");
+        }
+        if (name.length() > 100) {
+            throw new IllegalArgumentException(rowNumber + "행: 이름은 100자 이하여야 합니다.");
+        }
+        if (roleValue.isBlank()) {
+            throw new IllegalArgumentException(rowNumber + "행: 권한을 입력해 주세요.");
+        }
+        if (!roleValue.equals("ADMIN") && !roleValue.equals("EMPLOYEE")) {
+            throw new IllegalArgumentException(rowNumber + "행: 권한은 ADMIN 또는 EMPLOYEE만 사용할 수 있습니다.");
+        }
+        if (password.isBlank()) {
+            throw new IllegalArgumentException(rowNumber + "행: 비밀번호를 입력해 주세요.");
+        }
+        if (password.length() < 8) {
+            throw new IllegalArgumentException(rowNumber + "행: 비밀번호는 8자 이상이어야 합니다.");
+        }
+    }
+
+    private boolean isEmptyRow(Row row) {
+        if (row == null) {
+            return true;
+        }
+        for (int index = 0; index < 4; index++) {
+            if (!readCell(row, index).isBlank()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String readCell(Row row, int cellIndex) {
+        Cell cell = row == null ? null : row.getCell(cellIndex);
+        return cell == null ? "" : DATA_FORMATTER.formatCellValue(cell).trim();
+    }
+
     private Map<Long, AttendanceRecord> getTodayRecordsByEmployee(List<Employee> employees) {
         if (employees.isEmpty()) {
             return Map.of();
@@ -261,6 +515,15 @@ public class AdminService {
         return attendanceRecordRepository.findAllByEmployeeCompanyIdAndAttendanceDate(companyId, LocalDate.now())
                 .stream()
                 .collect(Collectors.toMap(record -> record.getEmployee().getId(), Function.identity()));
+    }
+
+    private List<AttendanceRecord> getMonthlyRecords(String employeeCode, YearMonth yearMonth) {
+        Employee admin = getEmployeeByCode(employeeCode);
+        return attendanceRecordRepository.findAllByEmployeeCompanyIdAndAttendanceDateBetween(
+                admin.getCompany().getId(),
+                yearMonth.atDay(1),
+                yearMonth.atEndOfMonth()
+        );
     }
 
     private AttendanceState toState(AttendanceRecord record) {
@@ -297,5 +560,37 @@ public class AdminService {
             return "퇴근 완료";
         }
         return "근무 중";
+    }
+
+    private boolean matchesFilter(AttendanceRow row, String filter) {
+        return switch (normalizeDashboardFilter(filter)) {
+            case "PRESENT" -> row.state() == AttendanceState.WORKING;
+            case "LATE" -> row.state() == AttendanceState.LATE;
+            case "ABSENT" -> row.state() == AttendanceState.ABSENT;
+            case "CHECKED_OUT" -> row.state() == AttendanceState.CHECKED_OUT;
+            default -> true;
+        };
+    }
+
+    public String normalizeDashboardFilter(String filter) {
+        if (filter == null || filter.isBlank()) {
+            return "ALL";
+        }
+
+        String normalized = filter.trim().toUpperCase();
+        return switch (normalized) {
+            case "ALL", "PRESENT", "LATE", "ABSENT", "CHECKED_OUT" -> normalized;
+            default -> "ALL";
+        };
+    }
+
+    public String getDashboardFilterLabel(String filter) {
+        return switch (normalizeDashboardFilter(filter)) {
+            case "PRESENT" -> "정상 출근";
+            case "LATE" -> "지각";
+            case "ABSENT" -> "미출근";
+            case "CHECKED_OUT" -> "퇴근 완료";
+            default -> "전체 직원";
+        };
     }
 }

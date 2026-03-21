@@ -78,8 +78,17 @@ a {
     color: var(--muted);
 }
 
+.section-copy {
+    margin: 0 0 18px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
 .login-form,
-.settings-form {
+.settings-form,
+.filter-form,
+.upload-form {
     display: grid;
     gap: 16px;
     margin-top: 24px;
@@ -199,6 +208,10 @@ select:focus {
     gap: 18px;
 }
 
+.stat-link {
+    display: block;
+}
+
 .stat-card,
 .panel {
     background: rgba(255, 255, 255, 0.94);
@@ -225,6 +238,12 @@ select:focus {
 
 .stat-card.danger {
     background: linear-gradient(180deg, #fff5f5, #fff);
+}
+
+.stat-card.selected {
+    border-color: rgba(15, 118, 110, 0.45);
+    box-shadow: 0 22px 44px rgba(15, 118, 110, 0.14);
+    transform: translateY(-1px);
 }
 
 .panel-header {
@@ -304,10 +323,43 @@ th {
     color: var(--text);
 }
 
+.map-help-card {
+    margin-top: 20px;
+    padding: 18px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(15, 118, 110, 0.08), rgba(15, 118, 110, 0.03));
+    border: 1px solid rgba(15, 118, 110, 0.14);
+}
+
+.map-help-card strong {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.map-help-card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
+}
+
+.map-shell {
+    margin-top: 8px;
+}
+
+.company-map {
+    width: 100%;
+    height: 380px;
+    border-radius: 22px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
 }
 
 .alert {
@@ -338,6 +390,42 @@ th {
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
+}
+
+.filter-form {
+    grid-template-columns: repeat(3, minmax(0, 220px));
+    align-items: end;
+}
+
+.empty-state {
+    padding: 20px;
+    border-radius: 16px;
+    background: rgba(226, 232, 240, 0.45);
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.upload-feedback {
+    margin-top: 20px;
+    padding: 18px;
+    border-radius: 18px;
+    background: rgba(239, 68, 68, 0.06);
+    border: 1px solid rgba(239, 68, 68, 0.14);
+}
+
+.upload-feedback h3 {
+    margin: 0 0 10px;
+    font-size: 15px;
+}
+
+.failure-list {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--danger-text);
+    display: grid;
+    gap: 6px;
+    font-size: 14px;
 }
 
 .ghost-link,
@@ -402,6 +490,10 @@ th {
     }
 
     .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-form {
         grid-template-columns: 1fr;
     }
 

@@ -15,6 +15,7 @@
         </div>
         <nav class="nav-menu">
             <a th:href="@{/dashboard}">오늘 출근 현황</a>
+            <a th:href="@{/attendance/monthly}">월별 출근 현황</a>
             <a th:href="@{/employees}" class="active">직원 목록</a>
             <a th:href="@{/settings/location}">회사 위치 설정</a>
         </nav>
@@ -83,6 +84,31 @@
                 </tr>
                 </tbody>
             </table>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <h2>엑셀 일괄 등록</h2>
+                <a th:href="@{/employees/template}" class="ghost-link">샘플 파일 다운로드</a>
+            </div>
+            <p class="section-copy">샘플 `.xlsx` 파일의 첫 번째 시트에 `사번`, `이름`, `권한`, `비밀번호` 순서로 입력해 주세요. 권한은 `ADMIN` 또는 `EMPLOYEE`만 허용됩니다.</p>
+            <form th:action="@{/employees/upload}" method="post" enctype="multipart/form-data" class="upload-form">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <label>
+                    엑셀 파일 선택
+                    <input type="file" name="employeeFile" accept=".xlsx">
+                </label>
+                <div class="button-row">
+                    <button type="submit" class="primary-button">엑셀 업로드</button>
+                    <a th:href="@{/employees/template}" class="ghost-link">샘플 다시 받기</a>
+                </div>
+            </form>
+            <div class="upload-feedback" th:if="${uploadFailureMessages}">
+                <h3>실패 항목</h3>
+                <ul class="failure-list">
+                    <li th:each="failure : ${uploadFailureMessages}" th:text="${failure}">2행: 사번을 입력해 주세요.</li>
+                </ul>
+            </div>
         </section>
 
         <section class="panel">

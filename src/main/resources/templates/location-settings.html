@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>회사 위치 설정</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin="">
 </head>
 <body>
 <div class="app-shell">
@@ -15,6 +18,7 @@
         </div>
         <nav class="nav-menu">
             <a th:href="@{/dashboard}">오늘 출근 현황</a>
+            <a th:href="@{/attendance/monthly}">월별 출근 현황</a>
             <a th:href="@{/employees}">직원 목록</a>
             <a th:href="@{/settings/location}" class="active">회사 위치 설정</a>
         </nav>
@@ -41,11 +45,15 @@
                 <div class="location-preview">
                     <p><strong>회사명</strong> <span th:text="${location.companyName()}">회사명</span></p>
                     <p><strong>좌표</strong>
-                        <span th:text="${location.latitude()}">0</span>,
-                        <span th:text="${location.longitude()}">0</span>
+                        <span id="currentLatitudeText" th:text="${location.latitude()}">0</span>,
+                        <span id="currentLongitudeText" th:text="${location.longitude()}">0</span>
                     </p>
-                    <p><strong>허용 반경</strong> <span th:text="${location.allowedRadiusMeters()}">0</span>m</p>
+                    <p><strong>허용 반경</strong> <span id="currentRadiusText" th:text="${location.allowedRadiusMeters()}">0</span>m</p>
                     <p><strong>지각 기준</strong> <span th:text="${location.lateAfterTime()}">09:00</span></p>
+                </div>
+                <div class="map-help-card">
+                    <strong>지도 사용 방법</strong>
+                    <p>지도를 클릭하거나 핀을 드래그하면 회사 좌표가 바로 반영됩니다. 허용 반경도 원으로 미리 확인할 수 있습니다.</p>
                 </div>
             </article>
 
@@ -58,22 +66,32 @@
                         <input type="text" th:field="*{companyName}" readonly>
                     </label>
 
+                    <div class="map-shell">
+                        <div id="companyMap"
+                             class="company-map"
+                             th:attr="data-latitude=${locationForm.latitude},
+                                      data-longitude=${locationForm.longitude},
+                                      data-radius=${locationForm.allowedRadiusMeters},
+                                      data-company-name=${locationForm.companyName}">
+                        </div>
+                    </div>
+
                     <div class="form-row">
                         <label>
                             위도
-                            <input type="number" step="0.000001" th:field="*{latitude}">
+                            <input type="number" step="0.000001" th:field="*{latitude}" id="latitudeInput">
                             <small class="field-error" th:if="${#fields.hasErrors('latitude')}" th:errors="*{latitude}"></small>
                         </label>
                         <label>
                             경도
-                            <input type="number" step="0.000001" th:field="*{longitude}">
+                            <input type="number" step="0.000001" th:field="*{longitude}" id="longitudeInput">
                             <small class="field-error" th:if="${#fields.hasErrors('longitude')}" th:errors="*{longitude}"></small>
                         </label>
                     </div>
 
                     <label>
                         허용 반경(m)
-                        <input type="number" th:field="*{allowedRadiusMeters}">
+                        <input type="number" th:field="*{allowedRadiusMeters}" id="radiusInput">
                         <small class="field-error" th:if="${#fields.hasErrors('allowedRadiusMeters')}" th:errors="*{allowedRadiusMeters}"></small>
                     </label>
 
@@ -88,5 +106,96 @@
         </section>
     </main>
 </div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+<script th:inline="javascript">
+    const mapElement = document.getElementById("companyMap");
+    const latitudeInput = document.getElementById("latitudeInput");
+    const longitudeInput = document.getElementById("longitudeInput");
+    const radiusInput = document.getElementById("radiusInput");
+    const currentLatitudeText = document.getElementById("currentLatitudeText");
+    const currentLongitudeText = document.getElementById("currentLongitudeText");
+    const currentRadiusText = document.getElementById("currentRadiusText");
+
+    if (mapElement && latitudeInput && longitudeInput && radiusInput) {
+        const initialLatitude = Number(mapElement.dataset.latitude);
+        const initialLongitude = Number(mapElement.dataset.longitude);
+        const initialRadius = Number(mapElement.dataset.radius);
+        const companyName = mapElement.dataset.companyName || "회사 위치";
+
+        const map = L.map(mapElement).setView([initialLatitude, initialLongitude], 16);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        const marker = L.marker([initialLatitude, initialLongitude], {
+            draggable: true
+        }).addTo(map);
+        marker.bindPopup(companyName);
+
+        const radiusCircle = L.circle([initialLatitude, initialLongitude], {
+            radius: initialRadius,
+            color: "#0f766e",
+            fillColor: "#14b8a6",
+            fillOpacity: 0.14
+        }).addTo(map);
+
+        function formatCoordinate(value) {
+            return Number(value).toFixed(6);
+        }
+
+        function updateLocation(latitude, longitude) {
+            latitudeInput.value = formatCoordinate(latitude);
+            longitudeInput.value = formatCoordinate(longitude);
+            currentLatitudeText.textContent = formatCoordinate(latitude);
+            currentLongitudeText.textContent = formatCoordinate(longitude);
+            marker.setLatLng([latitude, longitude]);
+            radiusCircle.setLatLng([latitude, longitude]);
+        }
+
+        function updateRadius(radius) {
+            const normalizedRadius = Number(radius) || 0;
+            radiusCircle.setRadius(normalizedRadius);
+            currentRadiusText.textContent = normalizedRadius;
+        }
+
+        map.on("click", (event) => {
+            updateLocation(event.latlng.lat, event.latlng.lng);
+        });
+
+        marker.on("dragend", (event) => {
+            const position = event.target.getLatLng();
+            updateLocation(position.lat, position.lng);
+        });
+
+        latitudeInput.addEventListener("input", () => {
+            const latitude = Number(latitudeInput.value);
+            const longitude = Number(longitudeInput.value);
+            if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+                updateLocation(latitude, longitude);
+                map.panTo([latitude, longitude]);
+            }
+        });
+
+        longitudeInput.addEventListener("input", () => {
+            const latitude = Number(latitudeInput.value);
+            const longitude = Number(longitudeInput.value);
+            if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+                updateLocation(latitude, longitude);
+                map.panTo([latitude, longitude]);
+            }
+        });
+
+        radiusInput.addEventListener("input", () => {
+            updateRadius(radiusInput.value);
+        });
+
+        updateLocation(initialLatitude, initialLongitude);
+        updateRadius(initialRadius);
+    }
+</script>
 </body>
 </html>

@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -55,7 +56,9 @@ class AdminControllerTest {
     void dashboardShouldRenderForAuthenticatedUser() throws Exception {
         given(adminService.getTodaySummary(anyString()))
                 .willReturn(new DashboardSummary(2, 1, 0, 1, 0));
-        given(adminService.getTodayAttendances(anyString()))
+        given(adminService.normalizeDashboardFilter(anyString())).willReturn("ALL");
+        given(adminService.getDashboardFilterLabel(anyString())).willReturn("전체 직원");
+        given(adminService.getTodayAttendances(anyString(), anyString()))
                 .willReturn(List.of());
         given(adminService.getCompanyLocation(anyString()))
                 .willReturn(new CompanyLocationView("OpenAI Seoul Office", 37.5665, 126.9780, 100, "09:00"));
@@ -65,5 +68,15 @@ class AdminControllerTest {
                 .andExpect(view().name("dashboard"))
                 .andExpect(model().attributeExists("summary"))
                 .andExpect(model().attributeExists("recentAttendances"));
+    }
+
+    @Test
+    @WithMockUser(username = "ADMIN001", roles = "ADMIN")
+    void employeeTemplateShouldDownload() throws Exception {
+        given(adminService.createEmployeeUploadTemplate()).willReturn(new byte[]{1, 2, 3});
+
+        mockMvc.perform(get("/employees/template"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("employee-upload-template.xlsx")));
     }
 }

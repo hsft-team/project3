@@ -2,10 +2,18 @@ package com.attendance.adminweb.controller;
 
 import com.attendance.adminweb.model.CompanyLocationForm;
 import com.attendance.adminweb.model.EmployeeForm;
+import com.attendance.adminweb.model.EmployeeUploadResult;
 import com.attendance.adminweb.service.AdminService;
 import jakarta.validation.Valid;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
+import java.time.YearMonth;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -15,6 +23,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.multipart.MultipartFile;
 
 @Controller
 public class AdminController {
@@ -31,10 +40,31 @@ public class AdminController {
     }
 
     @GetMapping("/dashboard")
-    public String dashboard(Model model, Principal principal) {
+    public String dashboard(@RequestParam(required = false) String filter, Model model, Principal principal) {
+        String normalizedFilter = adminService.normalizeDashboardFilter(filter);
+        model.addAttribute("selectedFilter", normalizedFilter);
+        model.addAttribute("selectedFilterLabel", adminService.getDashboardFilterLabel(normalizedFilter));
         model.addAttribute("summary", adminService.getTodaySummary(principal.getName()));
-        model.addAttribute("recentAttendances", adminService.getTodayAttendances(principal.getName()));
+        model.addAttribute("recentAttendances", adminService.getTodayAttendances(principal.getName(), normalizedFilter));
         return "dashboard";
+    }
+
+    @GetMapping("/attendance/monthly")
+    public String monthlyAttendance(@RequestParam(required = false) Integer year,
+                                    @RequestParam(required = false) Integer month,
+                                    Model model,
+                                    Principal principal) {
+        YearMonth currentMonth = YearMonth.now();
+        YearMonth selectedMonth = YearMonth.of(
+                year == null ? currentMonth.getYear() : year,
+                month == null ? currentMonth.getMonthValue() : month
+        );
+
+        model.addAttribute("selectedMonth", selectedMonth);
+        model.addAttribute("monthlySummary", adminService.getMonthlyAttendanceSummary(principal.getName(), selectedMonth));
+        model.addAttribute("monthlyEmployees", adminService.getMonthlyAttendanceEmployees(principal.getName(), selectedMonth));
+        model.addAttribute("monthlyAttendances", adminService.getMonthlyAttendanceRecords(principal.getName(), selectedMonth));
+        return "monthly-attendance";
     }
 
     @GetMapping("/employees")
@@ -47,6 +77,20 @@ public class AdminController {
         }
         model.addAttribute("editing", editId != null);
         return "employees";
+    }
+
+    @GetMapping("/employees/template")
+    public ResponseEntity<ByteArrayResource> downloadEmployeeTemplate() {
+        byte[] fileBytes = adminService.createEmployeeUploadTemplate();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename("employee-upload-template.xlsx", StandardCharsets.UTF_8)
+                        .build()
+                        .toString())
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentLength(fileBytes.length)
+                .body(new ByteArrayResource(fileBytes));
     }
 
     @GetMapping("/settings/location")
@@ -93,6 +137,33 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
             redirectAttributes.addFlashAttribute("employeeForm", form);
+        }
+
+        return "redirect:/employees";
+    }
+
+    @PostMapping("/employees/upload")
+    public String uploadEmployees(@RequestParam("employeeFile") MultipartFile employeeFile,
+                                  RedirectAttributes redirectAttributes,
+                                  Principal principal) {
+        try {
+            EmployeeUploadResult result = adminService.uploadEmployees(principal.getName(), employeeFile);
+            if (result.successCount() > 0) {
+                redirectAttributes.addFlashAttribute(
+                        "message",
+                        "엑셀 업로드가 완료되었습니다. " + result.successCount() + "건 등록, " + result.failureCount() + "건 실패"
+                );
+            } else if (result.hasFailures()) {
+                redirectAttributes.addFlashAttribute("employeeErrorMessage", "업로드된 직원이 없습니다. 실패 사유를 확인해 주세요.");
+            } else {
+                redirectAttributes.addFlashAttribute("employeeErrorMessage", "등록할 직원 데이터가 없습니다.");
+            }
+
+            if (result.hasFailures()) {
+                redirectAttributes.addFlashAttribute("uploadFailureMessages", result.failureMessages());
+            }
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
 
         return "redirect:/employees";
