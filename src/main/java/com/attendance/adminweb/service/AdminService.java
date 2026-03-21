@@ -25,6 +25,7 @@ import jakarta.persistence.EntityNotFoundException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -217,6 +218,8 @@ public class AdminService {
                             employee.getName(),
                             employee.getRole().name(),
                             employee.getCompany().getName(),
+                            formatScheduleTime(employee.getWorkStartTime()),
+                            formatScheduleTime(employee.getWorkEndTime()),
                             toState(record),
                             formatCheckIn(record)
                     );
@@ -250,7 +253,7 @@ public class AdminService {
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
             Row headerRow = sheet.createRow(0);
-            String[] headers = {"사번", "이름", "권한", "비밀번호"};
+            String[] headers = {"사번", "이름", "권한", "비밀번호", "출근 기준 시간", "퇴근 기준 시간"};
             for (int index = 0; index < headers.length; index++) {
                 Cell cell = headerRow.createCell(index);
                 cell.setCellValue(headers[index]);
@@ -262,12 +265,16 @@ public class AdminService {
             sampleRow1.createCell(1).setCellValue("김서준");
             sampleRow1.createCell(2).setCellValue("EMPLOYEE");
             sampleRow1.createCell(3).setCellValue("password1234");
+            sampleRow1.createCell(4).setCellValue("09:00");
+            sampleRow1.createCell(5).setCellValue("18:00");
 
             Row sampleRow2 = sheet.createRow(2);
             sampleRow2.createCell(0).setCellValue("EMP005");
             sampleRow2.createCell(1).setCellValue("박소연");
             sampleRow2.createCell(2).setCellValue("ADMIN");
             sampleRow2.createCell(3).setCellValue("securepass1");
+            sampleRow2.createCell(4).setCellValue("10:00");
+            sampleRow2.createCell(5).setCellValue("19:00");
 
             for (int index = 0; index < headers.length; index++) {
                 sheet.autoSizeColumn(index);
@@ -329,7 +336,9 @@ public class AdminService {
                 form.getName().trim(),
                 passwordEncoder.encode(form.getPassword()),
                 form.getEmployeeRole(),
-                admin.getCompany()
+                admin.getCompany(),
+                parseOptionalTime(form.getWorkStartTime(), "출근 기준 시간"),
+                parseOptionalTime(form.getWorkEndTime(), "퇴근 기준 시간")
         );
         employeeRepository.save(employee);
     }
@@ -342,7 +351,9 @@ public class AdminService {
         employee.updateProfile(
                 form.getEmployeeCode().trim(),
                 form.getName().trim(),
-                form.getEmployeeRole()
+                form.getEmployeeRole(),
+                parseOptionalTime(form.getWorkStartTime(), "출근 기준 시간"),
+                parseOptionalTime(form.getWorkEndTime(), "퇴근 기준 시간")
         );
 
         if (form.getPassword() != null && !form.getPassword().isBlank()) {
@@ -395,15 +406,19 @@ public class AdminService {
                 String name = readCell(row, 1);
                 String roleValue = readCell(row, 2).toUpperCase();
                 String password = readCell(row, 3);
+                String workStartTime = readCell(row, 4);
+                String workEndTime = readCell(row, 5);
 
                 try {
-                    validateUploadRow(rowIndex + 1, employeeCode, name, roleValue, password, existingCodes);
+                    validateUploadRow(rowIndex + 1, employeeCode, name, roleValue, password, workStartTime, workEndTime, existingCodes);
                     Employee employee = new Employee(
                             employeeCode,
                             name,
                             passwordEncoder.encode(password),
                             EmployeeRole.valueOf(roleValue),
-                            admin.getCompany()
+                            admin.getCompany(),
+                            parseOptionalTime(workStartTime, rowIndex + 1 + "행 출근 기준 시간"),
+                            parseOptionalTime(workEndTime, rowIndex + 1 + "행 퇴근 기준 시간")
                     );
                     employeeRepository.saveAndFlush(employee);
                     existingCodes.add(employeeCode);
@@ -459,6 +474,8 @@ public class AdminService {
                                    String name,
                                    String roleValue,
                                    String password,
+                                   String workStartTime,
+                                   String workEndTime,
                                    Set<String> existingCodes) {
         if (employeeCode.isBlank()) {
             throw new IllegalArgumentException(rowNumber + "행: 사번을 입력해 주세요.");
@@ -487,13 +504,15 @@ public class AdminService {
         if (password.length() < 8) {
             throw new IllegalArgumentException(rowNumber + "행: 비밀번호는 8자 이상이어야 합니다.");
         }
+        parseOptionalTime(workStartTime, rowNumber + "행 출근 기준 시간");
+        parseOptionalTime(workEndTime, rowNumber + "행 퇴근 기준 시간");
     }
 
     private boolean isEmptyRow(Row row) {
         if (row == null) {
             return true;
         }
-        for (int index = 0; index < 4; index++) {
+        for (int index = 0; index < 6; index++) {
             if (!readCell(row, index).isBlank()) {
                 return false;
             }
@@ -560,6 +579,22 @@ public class AdminService {
             return "퇴근 완료";
         }
         return "근무 중";
+    }
+
+    private LocalTime parseOptionalTime(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        try {
+            return LocalTime.parse(value.trim());
+        } catch (Exception exception) {
+            throw new IllegalArgumentException(fieldName + "은 HH:mm 형식으로 입력해 주세요.");
+        }
+    }
+
+    private String formatScheduleTime(LocalTime time) {
+        return time == null ? "-" : time.format(TIME_FORMATTER);
     }
 
     private boolean matchesFilter(AttendanceRow row, String filter) {

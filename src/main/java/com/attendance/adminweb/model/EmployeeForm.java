@@ -22,6 +22,10 @@ public class EmployeeForm {
 
     private String password;
 
+    private String workStartTime;
+
+    private String workEndTime;
+
     public static EmployeeForm from(Employee employee) {
         EmployeeForm form = new EmployeeForm();
         form.setId(employee.getId());
@@ -29,6 +33,8 @@ public class EmployeeForm {
         form.setName(employee.getName());
         form.setRole(employee.getRole().name());
         form.setPassword("");
+        form.setWorkStartTime(employee.getWorkStartTime() == null ? "" : employee.getWorkStartTime().toString());
+        form.setWorkEndTime(employee.getWorkEndTime() == null ? "" : employee.getWorkEndTime().toString());
         return form;
     }
 
@@ -70,6 +76,22 @@ public class EmployeeForm {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getWorkStartTime() {
+        return workStartTime;
+    }
+
+    public void setWorkStartTime(String workStartTime) {
+        this.workStartTime = workStartTime;
+    }
+
+    public String getWorkEndTime() {
+        return workEndTime;
+    }
+
+    public void setWorkEndTime(String workEndTime) {
+        this.workEndTime = workEndTime;
     }
 
     public EmployeeRole getEmployeeRole() {

@@ -6,6 +6,8 @@ public record EmployeeRow(
         String name,
         String role,
         String companyName,
+        String workStartTime,
+        String workEndTime,
         AttendanceState attendanceState,
         String checkInTime
 ) {
