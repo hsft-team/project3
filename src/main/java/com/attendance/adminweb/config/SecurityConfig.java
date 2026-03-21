@@ -1,0 +1,61 @@
+package com.attendance.adminweb.config;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+
+@Configuration
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   AuthenticationFailureHandler authenticationFailureHandler) throws Exception {
+        http
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/css/**").permitAll()
+                        .requestMatchers("/login").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .defaultSuccessUrl("/dashboard", true)
+                        .failureHandler(authenticationFailureHandler)
+                        .permitAll()
+                )
+                .logout(Customizer.withDefaults());
+
+        return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationFailureHandler authenticationFailureHandler() {
+        return (request, response, exception) -> {
+            String message = URLEncoder.encode(resolveFailureMessage(exception), StandardCharsets.UTF_8);
+            response.sendRedirect("/login?error&message=" + message);
+        };
+    }
+
+    private String resolveFailureMessage(AuthenticationException exception) {
+        String baseMessage = "로그인에 실패했습니다. 관리자 계정은 ADMIN001 형식의 사번으로 로그인해야 합니다.";
+        String detail = exception.getMessage();
+
+        if (detail == null || detail.isBlank()) {
+            return baseMessage + " 비밀번호도 다시 확인해 주세요.";
+        }
+
+        return baseMessage + " 원인: " + detail;
+    }
+}

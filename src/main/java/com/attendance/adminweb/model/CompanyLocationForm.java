@@ -1,0 +1,67 @@
+package com.attendance.adminweb.model;
+
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+
+public class CompanyLocationForm {
+
+    private String companyName;
+
+    @NotNull(message = "위도를 입력해 주세요.")
+    @DecimalMin(value = "-90.0", message = "위도 범위를 확인해 주세요.")
+    @DecimalMax(value = "90.0", message = "위도 범위를 확인해 주세요.")
+    private Double latitude;
+
+    @NotNull(message = "경도를 입력해 주세요.")
+    @DecimalMin(value = "-180.0", message = "경도 범위를 확인해 주세요.")
+    @DecimalMax(value = "180.0", message = "경도 범위를 확인해 주세요.")
+    private Double longitude;
+
+    @NotNull(message = "허용 반경을 입력해 주세요.")
+    @Min(value = 10, message = "허용 반경은 10m 이상이어야 합니다.")
+    private Integer allowedRadiusMeters;
+
+    private String lateAfterTime;
+
+    public String getCompanyName() {
+        return companyName;
+    }
+
+    public void setCompanyName(String companyName) {
+        this.companyName = companyName;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+
+    public Integer getAllowedRadiusMeters() {
+        return allowedRadiusMeters;
+    }
+
+    public void setAllowedRadiusMeters(Integer allowedRadiusMeters) {
+        this.allowedRadiusMeters = allowedRadiusMeters;
+    }
+
+    public String getLateAfterTime() {
+        return lateAfterTime;
+    }
+
+    public void setLateAfterTime(String lateAfterTime) {
+        this.lateAfterTime = lateAfterTime;
+    }
+}

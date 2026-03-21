@@ -1,0 +1,9 @@
+.DS_Store
+.tools/
+.pgdata/
+target/
+*.log
+.idea/
+*.iml
+.env
+.env.*
