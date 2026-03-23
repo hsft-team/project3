@@ -1,2 +1,2 @@
 @echo off
-powershell -ExecutionPolicy Bypass -File "%~dp0deploy-prod.ps1"
+wscript.exe "%~dp0deploy-prod.vbs"

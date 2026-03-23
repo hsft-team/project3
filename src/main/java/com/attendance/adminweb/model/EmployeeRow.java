@@ -10,6 +10,7 @@ public record EmployeeRow(
         AttendanceState attendanceState,
         String checkInTime,
         String checkOutTime,
+        boolean deviceRegistered,
         boolean active,
         boolean deleted
 ) {

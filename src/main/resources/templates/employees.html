@@ -85,6 +85,12 @@
                             <a th:if="${!employee.deleted()}"
                                th:href="@{/employees(editId=${employee.id()})}"
                                class="ghost-link small-link">수정</a>
+                            <form th:if="${employee.deviceRegistered() and !employee.deleted()}"
+                                  th:action="@{/employees/{employeeId}/device-reset(employeeId=${employee.id()})}" method="post">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                <input type="hidden" name="showDeleted" th:value="${showDeleted}">
+                                <button type="submit" class="ghost-link">단말 초기화</button>
+                            </form>
                             <form th:if="${!employee.deleted()}"
                                   th:action="@{/employees/{employeeId}/usage(employeeId=${employee.id()})}" method="post">
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">

@@ -224,6 +224,7 @@ public class AdminService {
                             toState(record),
                             formatCheckIn(record),
                             formatCheckOut(record),
+                            employee.getRegisteredDeviceId() != null && !employee.getRegisteredDeviceId().isBlank(),
                             employee.isActive(),
                             employee.isDeleted()
                     );

@@ -1,2 +1,2 @@
 @echo off
-powershell -ExecutionPolicy Bypass -File "%~dp0restart-prod.ps1"
+wscript.exe "%~dp0restart-prod.vbs"
