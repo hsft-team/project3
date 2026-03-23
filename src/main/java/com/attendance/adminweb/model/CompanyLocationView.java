@@ -5,6 +5,7 @@ public record CompanyLocationView(
         double latitude,
         double longitude,
         int allowedRadiusMeters,
-        String lateAfterTime
+        String lateAfterTime,
+        String noticeMessage
 ) {
 }

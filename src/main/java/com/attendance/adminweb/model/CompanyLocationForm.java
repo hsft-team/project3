@@ -29,6 +29,9 @@ public class CompanyLocationForm {
 
     private String lateAfterTime;
 
+    @Size(max = 1000, message = "공지사항은 1000자 이하여야 합니다.")
+    private String noticeMessage;
+
     public String getCompanyName() {
         return companyName;
     }
@@ -67,5 +70,13 @@ public class CompanyLocationForm {
 
     public void setLateAfterTime(String lateAfterTime) {
         this.lateAfterTime = lateAfterTime;
+    }
+
+    public String getNoticeMessage() {
+        return noticeMessage;
+    }
+
+    public void setNoticeMessage(String noticeMessage) {
+        this.noticeMessage = noticeMessage;
     }
 }

@@ -30,6 +30,9 @@ public class CompanySetting extends BaseTimeEntity {
     @Column(name = "late_after_time", nullable = false)
     private LocalTime lateAfterTime;
 
+    @Column(name = "notice_message", length = 1000)
+    private String noticeMessage;
+
     protected CompanySetting() {
     }
 
@@ -49,7 +52,15 @@ public class CompanySetting extends BaseTimeEntity {
         return lateAfterTime;
     }
 
+    public String getNoticeMessage() {
+        return noticeMessage;
+    }
+
     public void updateAllowedRadiusMeters(Integer allowedRadiusMeters) {
         this.allowedRadiusMeters = allowedRadiusMeters;
+    }
+
+    public void updateNoticeMessage(String noticeMessage) {
+        this.noticeMessage = noticeMessage;
     }
 }

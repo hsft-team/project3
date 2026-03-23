@@ -105,6 +105,14 @@
                         <input type="text" th:field="*{lateAfterTime}" readonly>
                     </label>
 
+                    <label>
+                        모바일 공지사항
+                        <textarea th:field="*{noticeMessage}"
+                                  rows="5"
+                                  placeholder="모바일 메인 화면에 노출할 공지사항을 입력해 주세요."></textarea>
+                        <small class="field-error" th:if="${#fields.hasErrors('noticeMessage')}" th:errors="*{noticeMessage}"></small>
+                    </label>
+
                     <button type="submit" class="primary-button">저장하기</button>
                 </form>
             </article>

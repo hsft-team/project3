@@ -307,7 +307,8 @@ public class AdminService {
                 company.getLatitude(),
                 company.getLongitude(),
                 setting.getAllowedRadiusMeters(),
-                setting.getLateAfterTime().format(TIME_FORMATTER)
+                setting.getLateAfterTime().format(TIME_FORMATTER),
+                setting.getNoticeMessage()
         );
     }
 
@@ -319,6 +320,7 @@ public class AdminService {
         form.setLongitude(location.longitude());
         form.setAllowedRadiusMeters(location.allowedRadiusMeters());
         form.setLateAfterTime(location.lateAfterTime());
+        form.setNoticeMessage(location.noticeMessage());
         return form;
     }
 
@@ -333,6 +335,7 @@ public class AdminService {
         company.updateName(form.getCompanyName().trim());
         company.updateLocation(form.getLatitude(), form.getLongitude());
         setting.updateAllowedRadiusMeters(form.getAllowedRadiusMeters());
+        setting.updateNoticeMessage(normalizeNoticeMessage(form.getNoticeMessage()));
     }
 
     @Transactional
@@ -606,6 +609,14 @@ public class AdminService {
             return;
         }
         employee.markPasswordChanged();
+    }
+
+    private String normalizeNoticeMessage(String noticeMessage) {
+        if (noticeMessage == null) {
+            return null;
+        }
+        String normalized = noticeMessage.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private String readCell(Row row, int cellIndex) {

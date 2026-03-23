@@ -119,12 +119,29 @@ select {
     background: #fff;
 }
 
+textarea {
+    width: 100%;
+    min-height: 120px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 15px;
+    font-family: inherit;
+    background: #fff;
+    resize: vertical;
+}
+
 input:focus {
     outline: 2px solid rgba(15, 118, 110, 0.18);
     border-color: var(--primary);
 }
 
 select:focus {
+    outline: 2px solid rgba(15, 118, 110, 0.18);
+    border-color: var(--primary);
+}
+
+textarea:focus {
     outline: 2px solid rgba(15, 118, 110, 0.18);
     border-color: var(--primary);
 }
