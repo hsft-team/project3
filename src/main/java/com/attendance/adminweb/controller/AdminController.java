@@ -52,6 +52,7 @@ public class AdminController {
     @GetMapping("/attendance/monthly")
     public String monthlyAttendance(@RequestParam(required = false) Integer year,
                                     @RequestParam(required = false) Integer month,
+                                    @RequestParam(required = false) String employeeCode,
                                     Model model,
                                     Principal principal) {
         YearMonth currentMonth = YearMonth.now();
@@ -61,10 +62,12 @@ public class AdminController {
         );
 
         model.addAttribute("selectedMonth", selectedMonth);
+        model.addAttribute("selectedEmployeeCode", employeeCode);
         model.addAttribute("monthlySummary", adminService.getMonthlyAttendanceSummary(principal.getName(), selectedMonth));
         model.addAttribute("monthlyEmployees", adminService.getMonthlyAttendanceEmployees(principal.getName(), selectedMonth));
         model.addAttribute("monthlyAttendances", adminService.getMonthlyAttendanceRecords(principal.getName(), selectedMonth));
-        model.addAttribute("monthlyEmployeeDetails", adminService.getMonthlyAttendanceEmployeeDetails(principal.getName(), selectedMonth));
+        model.addAttribute("selectedEmployeeDetail",
+                adminService.getMonthlyAttendanceEmployeeDetail(principal.getName(), selectedMonth, employeeCode));
         return "monthly-attendance";
     }
 

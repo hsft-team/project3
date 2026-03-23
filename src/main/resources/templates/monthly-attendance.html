@@ -104,7 +104,13 @@
                 <tbody>
                 <tr th:each="employee : ${monthlyEmployees}">
                     <td th:text="${employee.employeeCode()}">EMP001</td>
-                    <td th:text="${employee.employeeName()}">홍길동</td>
+                    <td>
+                        <a class="employee-name-link"
+                           th:href="@{/attendance/monthly(year=${selectedMonth.year}, month=${selectedMonth.monthValue}, employeeCode=${employee.employeeCode()})}"
+                           th:text="${employee.employeeName()}">
+                            홍길동
+                        </a>
+                    </td>
                     <td th:text="${employee.role()}">EMPLOYEE</td>
                     <td th:text="${employee.attendanceDays()}">0</td>
                     <td th:text="${employee.lateDays()}">0</td>
@@ -127,13 +133,26 @@
         <section class="panel">
             <div class="panel-header">
                 <h2>직원별 월간 출근 상세</h2>
-                <span class="pill neutral" th:text="'총 ' + ${#lists.size(monthlyEmployeeDetails)} + '명'">총 0명</span>
+                <div class="action-row">
+                    <span class="pill neutral"
+                          th:text="${selectedEmployeeCode != null and !#strings.isEmpty(selectedEmployeeCode)} ? ${selectedEmployeeCode} : '직원 선택 필요'">
+                        직원 선택 필요
+                    </span>
+                    <a class="ghost-link"
+                       th:if="${selectedEmployeeCode != null and !#strings.isEmpty(selectedEmployeeCode)}"
+                       th:href="@{/attendance/monthly(year=${selectedMonth.year}, month=${selectedMonth.monthValue})}">
+                        선택 해제
+                    </a>
+                </div>
             </div>
-            <div class="empty-state" th:if="${#lists.isEmpty(monthlyEmployeeDetails)}">
-                선택한 월에 직원별 상세 내역이 없습니다.
+            <div class="empty-state" th:if="${selectedEmployeeDetail == null and (selectedEmployeeCode == null or #strings.isEmpty(selectedEmployeeCode))}">
+                직원별 월간 요약에서 이름을 클릭하면 해당 직원의 상세 내역만 볼 수 있습니다.
             </div>
-            <div class="employee-detail-grid" th:if="${!#lists.isEmpty(monthlyEmployeeDetails)}">
-                <article class="employee-detail-card" th:each="detail : ${monthlyEmployeeDetails}">
+            <div class="empty-state" th:if="${selectedEmployeeDetail == null and selectedEmployeeCode != null and !#strings.isEmpty(selectedEmployeeCode)}">
+                선택한 직원의 월간 출근 상세 내역이 없습니다.
+            </div>
+            <div class="employee-detail-grid" th:if="${selectedEmployeeDetail != null}">
+                <article class="employee-detail-card" th:with="detail=${selectedEmployeeDetail}">
                     <div class="employee-detail-header">
                         <div>
                             <h3>

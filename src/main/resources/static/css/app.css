@@ -336,6 +336,15 @@ th {
     font-weight: 700;
 }
 
+.employee-name-link {
+    color: var(--primary-dark);
+    font-weight: 800;
+}
+
+.employee-name-link:hover {
+    text-decoration: underline;
+}
+
 .compact-column {
     width: 92px;
 }

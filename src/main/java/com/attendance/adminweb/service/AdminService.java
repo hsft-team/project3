@@ -208,12 +208,19 @@ public class AdminService {
                 .toList();
     }
 
-    public List<MonthlyAttendanceEmployeeDetailRow> getMonthlyAttendanceEmployeeDetails(String employeeCode, YearMonth yearMonth) {
+    public MonthlyAttendanceEmployeeDetailRow getMonthlyAttendanceEmployeeDetail(String employeeCode,
+                                                                                 YearMonth yearMonth,
+                                                                                 String selectedEmployeeCode) {
+        if (selectedEmployeeCode == null || selectedEmployeeCode.isBlank()) {
+            return null;
+        }
+
         List<Employee> employees = getCompanyEmployees(employeeCode);
         Map<Long, List<AttendanceRecord>> recordsByEmployeeId = getMonthlyRecords(employeeCode, yearMonth).stream()
                 .collect(Collectors.groupingBy(record -> record.getEmployee().getId()));
 
         return employees.stream()
+                .filter(employee -> employee.getEmployeeCode().equalsIgnoreCase(selectedEmployeeCode.trim()))
                 .map(employee -> {
                     List<AttendanceRecord> employeeRecords = recordsByEmployeeId.getOrDefault(employee.getId(), List.of()).stream()
                             .sorted(Comparator.comparing(AttendanceRecord::getAttendanceDate).reversed()
@@ -250,8 +257,8 @@ public class AdminService {
                             records
                     );
                 })
-                .filter(detail -> !detail.records().isEmpty())
-                .toList();
+                .findFirst()
+                .orElse(null);
     }
 
     public byte[] exportMonthlyAttendanceExcel(String employeeCode, YearMonth yearMonth) {
