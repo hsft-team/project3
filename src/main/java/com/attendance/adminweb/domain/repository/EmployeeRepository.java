@@ -17,6 +17,15 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     @EntityGraph(attributePaths = "company")
     List<Employee> findAllByCompanyIdAndActiveTrueOrderByNameAsc(Long companyId);
 
+    @EntityGraph(attributePaths = "company")
+    List<Employee> findAllByCompanyIdAndActiveTrueAndDeletedFalseOrderByNameAsc(Long companyId);
+
+    @EntityGraph(attributePaths = "company")
+    List<Employee> findAllByCompanyIdAndDeletedFalseOrderByNameAsc(Long companyId);
+
+    @EntityGraph(attributePaths = "company")
+    List<Employee> findAllByCompanyIdAndDeletedTrueOrderByNameAsc(Long companyId);
+
     boolean existsByEmployeeCode(String employeeCode);
 
     boolean existsByEmployeeCodeAndIdNot(String employeeCode, Long id);

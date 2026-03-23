@@ -35,6 +35,9 @@ public class Employee extends BaseTimeEntity {
     @Column(nullable = false, columnDefinition = "boolean default true")
     private boolean active = true;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean deleted = false;
+
     @Column(name = "password_change_required", nullable = false, columnDefinition = "boolean default true")
     private boolean passwordChangeRequired = true;
 
@@ -108,6 +111,10 @@ public class Employee extends BaseTimeEntity {
         return active;
     }
 
+    public boolean isDeleted() {
+        return deleted;
+    }
+
     public boolean isPasswordChangeRequired() {
         return passwordChangeRequired;
     }
@@ -150,6 +157,16 @@ public class Employee extends BaseTimeEntity {
 
     public void updateActive(boolean active) {
         this.active = active;
+    }
+
+    public void softDelete() {
+        this.deleted = true;
+        this.active = false;
+        resetRegisteredDevice();
+    }
+
+    public void restore() {
+        this.deleted = false;
     }
 
     public void markPasswordChangeRequired() {

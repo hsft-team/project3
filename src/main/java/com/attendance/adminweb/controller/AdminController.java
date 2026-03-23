@@ -68,8 +68,12 @@ public class AdminController {
     }
 
     @GetMapping("/employees")
-    public String employees(@RequestParam(required = false) Long editId, Model model, Principal principal) {
-        model.addAttribute("employees", adminService.getEmployees(principal.getName()));
+    public String employees(@RequestParam(required = false) Long editId,
+                            @RequestParam(defaultValue = "false") boolean showDeleted,
+                            Model model,
+                            Principal principal) {
+        model.addAttribute("employees", adminService.getEmployees(principal.getName(), showDeleted));
+        model.addAttribute("showDeleted", showDeleted);
         if (!model.containsAttribute("employeeForm")) {
             model.addAttribute("employeeForm", editId == null
                     ? adminService.getEmployeeFormForCreate()
@@ -198,6 +202,7 @@ public class AdminController {
     @PostMapping("/employees/{employeeId}/usage")
     public String updateEmployeeUsage(@PathVariable Long employeeId,
                                       @RequestParam boolean active,
+                                      @RequestParam(defaultValue = "false") boolean showDeleted,
                                       RedirectAttributes redirectAttributes,
                                       Principal principal) {
         try {
@@ -206,11 +211,38 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
+        return "redirect:/employees" + (showDeleted ? "?showDeleted=true" : "");
+    }
+
+    @PostMapping("/employees/{employeeId}/delete")
+    public String deleteEmployee(@PathVariable Long employeeId,
+                                 RedirectAttributes redirectAttributes,
+                                 Principal principal) {
+        try {
+            adminService.deleteEmployee(principal.getName(), employeeId);
+            redirectAttributes.addFlashAttribute("message", "직원이 삭제 목록으로 이동되었습니다.");
+        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+            redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
+        }
         return "redirect:/employees";
+    }
+
+    @PostMapping("/employees/{employeeId}/restore")
+    public String restoreEmployee(@PathVariable Long employeeId,
+                                  RedirectAttributes redirectAttributes,
+                                  Principal principal) {
+        try {
+            adminService.restoreEmployee(principal.getName(), employeeId);
+            redirectAttributes.addFlashAttribute("message", "직원이 복구되었습니다.");
+        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+            redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
+        }
+        return "redirect:/employees?showDeleted=true";
     }
 
     @PostMapping("/employees/{employeeId}/device-reset")
     public String resetEmployeeDevice(@PathVariable Long employeeId,
+                                      @RequestParam(defaultValue = "false") boolean showDeleted,
                                       RedirectAttributes redirectAttributes,
                                       Principal principal) {
         try {
@@ -219,7 +251,7 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
-        return "redirect:/employees";
+        return "redirect:/employees" + (showDeleted ? "?showDeleted=true" : "");
     }
 
     private void validateCreateEmployeeForm(EmployeeForm form, BindingResult bindingResult) {

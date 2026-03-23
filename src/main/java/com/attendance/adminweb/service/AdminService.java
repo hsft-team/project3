@@ -207,8 +207,8 @@ public class AdminService {
                 .toList();
     }
 
-    public List<EmployeeRow> getEmployees(String employeeCode) {
-        List<Employee> employees = getAllCompanyEmployees(employeeCode);
+    public List<EmployeeRow> getEmployees(String employeeCode, boolean showDeleted) {
+        List<Employee> employees = getEmployeeList(employeeCode, showDeleted);
         Map<Long, AttendanceRecord> recordsByEmployeeId = getTodayRecordsByEmployee(employees);
 
         return employees.stream()
@@ -223,6 +223,7 @@ public class AdminService {
                             formatScheduleTime(employee.getWorkStartTime()),
                             formatScheduleTime(employee.getWorkEndTime()),
                             employee.isActive(),
+                            employee.isDeleted(),
                             toState(record),
                             formatCheckIn(record),
                             employee.getRegisteredDeviceId() != null && !employee.getRegisteredDeviceId().isBlank(),
@@ -242,6 +243,9 @@ public class AdminService {
 
     public EmployeeForm getEmployeeFormForEdit(String employeeCode, Long employeeId) {
         Employee employee = getEditableEmployee(employeeCode, employeeId);
+        if (employee.isDeleted()) {
+            throw new IllegalArgumentException("삭제된 직원은 수정할 수 없습니다. 먼저 복구해 주세요.");
+        }
         return EmployeeForm.from(employee);
     }
 
@@ -354,6 +358,9 @@ public class AdminService {
     @Transactional
     public void updateEmployee(String adminEmployeeCode, Long employeeId, EmployeeForm form) {
         Employee employee = getEditableEmployee(adminEmployeeCode, employeeId);
+        if (employee.isDeleted()) {
+            throw new IllegalArgumentException("삭제된 직원은 수정할 수 없습니다. 먼저 복구해 주세요.");
+        }
         validateDuplicateEmployeeCode(form.getEmployeeCode(), employeeId);
 
         employee.updateProfile(
@@ -375,6 +382,10 @@ public class AdminService {
         Employee admin = getEmployeeByCode(adminEmployeeCode);
         Employee employee = getEditableEmployee(adminEmployeeCode, employeeId);
 
+        if (employee.isDeleted()) {
+            throw new IllegalArgumentException("삭제된 직원은 사용 여부를 변경할 수 없습니다. 먼저 복구해 주세요.");
+        }
+
         if (admin.getId().equals(employee.getId())) {
             throw new IllegalArgumentException("현재 로그인한 관리자 계정은 사용 중지할 수 없습니다.");
         }
@@ -389,7 +400,37 @@ public class AdminService {
     @Transactional
     public void resetEmployeeDevice(String adminEmployeeCode, Long employeeId) {
         Employee employee = getEditableEmployee(adminEmployeeCode, employeeId);
+        if (employee.isDeleted()) {
+            throw new IllegalArgumentException("삭제된 직원의 단말은 초기화할 수 없습니다.");
+        }
         employee.resetRegisteredDevice();
+    }
+
+    @Transactional
+    public void deleteEmployee(String adminEmployeeCode, Long employeeId) {
+        Employee admin = getEmployeeByCode(adminEmployeeCode);
+        Employee employee = getEditableEmployee(adminEmployeeCode, employeeId);
+
+        if (admin.getId().equals(employee.getId())) {
+            throw new IllegalArgumentException("현재 로그인한 관리자 계정은 삭제할 수 없습니다.");
+        }
+
+        if (employee.isDeleted()) {
+            throw new IllegalArgumentException("이미 삭제된 직원입니다.");
+        }
+
+        employee.softDelete();
+    }
+
+    @Transactional
+    public void restoreEmployee(String adminEmployeeCode, Long employeeId) {
+        Employee employee = getEditableEmployee(adminEmployeeCode, employeeId);
+
+        if (!employee.isDeleted()) {
+            throw new IllegalArgumentException("삭제된 직원만 복구할 수 있습니다.");
+        }
+
+        employee.restore();
     }
 
     @Transactional
@@ -454,12 +495,15 @@ public class AdminService {
 
     private List<Employee> getCompanyEmployees(String employeeCode) {
         Employee admin = getEmployeeByCode(employeeCode);
-        return employeeRepository.findAllByCompanyIdAndActiveTrueOrderByNameAsc(admin.getCompany().getId());
+        return employeeRepository.findAllByCompanyIdAndActiveTrueAndDeletedFalseOrderByNameAsc(admin.getCompany().getId());
     }
 
-    private List<Employee> getAllCompanyEmployees(String employeeCode) {
+    private List<Employee> getEmployeeList(String employeeCode, boolean showDeleted) {
         Employee admin = getEmployeeByCode(employeeCode);
-        return employeeRepository.findAllByCompanyIdOrderByNameAsc(admin.getCompany().getId());
+        if (showDeleted) {
+            return employeeRepository.findAllByCompanyIdAndDeletedTrueOrderByNameAsc(admin.getCompany().getId());
+        }
+        return employeeRepository.findAllByCompanyIdAndDeletedFalseOrderByNameAsc(admin.getCompany().getId());
     }
 
     private Employee getEmployeeByCode(String employeeCode) {
