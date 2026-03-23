@@ -46,6 +46,7 @@ Start-Process -FilePath "java" `
         "--spring.datasource.password=change-this-db-password"
     ) `
     -WorkingDirectory $projectRoot `
+    -WindowStyle Hidden `
     -RedirectStandardOutput $outLog `
     -RedirectStandardError $errLog
 
