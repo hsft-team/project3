@@ -773,7 +773,9 @@ public class AdminService {
                 admin.getCompany().getId(),
                 yearMonth.atDay(1),
                 yearMonth.atEndOfMonth()
-        );
+        ).stream()
+                .filter(record -> !record.getEmployee().isDeleted())
+                .toList();
     }
 
     private AttendanceState toState(AttendanceRecord record) {
