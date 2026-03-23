@@ -111,13 +111,14 @@
                             <button type="button" class="ghost-link small-link editor-button" data-editor-action="heading">제목</button>
                             <button type="button" class="ghost-link small-link editor-button" data-editor-action="bold">굵게</button>
                             <button type="button" class="ghost-link small-link editor-button" data-editor-action="bullet">목록</button>
+                            <button type="button" class="ghost-link small-link editor-button" data-editor-action="color">색상</button>
                             <button type="button" class="ghost-link small-link editor-button" data-editor-action="link">링크</button>
                         </div>
                         <textarea th:field="*{noticeMessage}"
                                   id="noticeMessageInput"
                                   rows="5"
                                   placeholder="모바일 메인 화면에 노출할 공지사항을 입력해 주세요."></textarea>
-                        <small class="field-error">제목, 굵게, 목록, 링크 정도의 간단한 서식을 사용할 수 있습니다.</small>
+                        <small class="field-error">제목, 굵게, 목록, 색상, 링크 정도의 간단한 서식을 사용할 수 있습니다.</small>
                         <small class="field-error" th:if="${#fields.hasErrors('noticeMessage')}" th:errors="*{noticeMessage}"></small>
                     </label>
 
@@ -353,6 +354,42 @@
         noticeMessageInput.setSelectionRange(cursor, cursor);
     }
 
+    function insertNoticeColor() {
+        if (!noticeMessageInput) {
+            return;
+        }
+
+        const start = noticeMessageInput.selectionStart ?? 0;
+        const end = noticeMessageInput.selectionEnd ?? 0;
+        const selectedText = noticeMessageInput.value.slice(start, end).trim();
+        const colorValue = window.prompt(
+            "색상 코드를 입력해 주세요. 예: #1463ff 또는 red",
+            "#1463ff"
+        );
+
+        if (colorValue === null) {
+            return;
+        }
+
+        const normalizedColorValue = colorValue.trim();
+        if (!normalizedColorValue) {
+            window.alert("색상 코드를 입력해 주세요.");
+            return;
+        }
+
+        const content = selectedText || "색상 문구";
+        const snippet = `{color:${normalizedColorValue}}${content}{/color}`;
+        const nextValue =
+            noticeMessageInput.value.slice(0, start) +
+            snippet +
+            noticeMessageInput.value.slice(end);
+
+        noticeMessageInput.value = nextValue;
+        noticeMessageInput.focus();
+        const cursor = start + snippet.length;
+        noticeMessageInput.setSelectionRange(cursor, cursor);
+    }
+
     editorButtons.forEach((button) => {
         button.addEventListener("click", () => {
             const action = button.dataset.editorAction;
@@ -369,6 +406,11 @@
 
             if (action === "bullet") {
                 insertNoticeText("- 항목을 입력해 주세요\n");
+                return;
+            }
+
+            if (action === "color") {
+                insertNoticeColor();
                 return;
             }
 

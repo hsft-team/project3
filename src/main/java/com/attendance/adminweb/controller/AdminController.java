@@ -64,7 +64,26 @@ public class AdminController {
         model.addAttribute("monthlySummary", adminService.getMonthlyAttendanceSummary(principal.getName(), selectedMonth));
         model.addAttribute("monthlyEmployees", adminService.getMonthlyAttendanceEmployees(principal.getName(), selectedMonth));
         model.addAttribute("monthlyAttendances", adminService.getMonthlyAttendanceRecords(principal.getName(), selectedMonth));
+        model.addAttribute("monthlyEmployeeDetails", adminService.getMonthlyAttendanceEmployeeDetails(principal.getName(), selectedMonth));
         return "monthly-attendance";
+    }
+
+    @GetMapping("/attendance/monthly/excel")
+    public ResponseEntity<ByteArrayResource> downloadMonthlyAttendanceExcel(@RequestParam Integer year,
+                                                                            @RequestParam Integer month,
+                                                                            Principal principal) {
+        YearMonth selectedMonth = YearMonth.of(year, month);
+        byte[] fileBytes = adminService.exportMonthlyAttendanceExcel(principal.getName(), selectedMonth);
+        String fileName = "monthly-attendance-" + selectedMonth + ".xlsx";
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(fileName, StandardCharsets.UTF_8)
+                        .build()
+                        .toString())
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentLength(fileBytes.length)
+                .body(new ByteArrayResource(fileBytes));
     }
 
     @GetMapping("/employees")

@@ -18,6 +18,7 @@ import com.attendance.adminweb.model.DashboardSummary;
 import com.attendance.adminweb.model.EmployeeForm;
 import com.attendance.adminweb.model.EmployeeRow;
 import com.attendance.adminweb.model.EmployeeUploadResult;
+import com.attendance.adminweb.model.MonthlyAttendanceEmployeeDetailRow;
 import com.attendance.adminweb.model.MonthlyAttendanceEmployeeRow;
 import com.attendance.adminweb.model.MonthlyAttendanceRecordRow;
 import com.attendance.adminweb.model.MonthlyAttendanceSummary;
@@ -205,6 +206,127 @@ public class AdminService {
                         buildNote(record)
                 ))
                 .toList();
+    }
+
+    public List<MonthlyAttendanceEmployeeDetailRow> getMonthlyAttendanceEmployeeDetails(String employeeCode, YearMonth yearMonth) {
+        List<Employee> employees = getCompanyEmployees(employeeCode);
+        Map<Long, List<AttendanceRecord>> recordsByEmployeeId = getMonthlyRecords(employeeCode, yearMonth).stream()
+                .collect(Collectors.groupingBy(record -> record.getEmployee().getId()));
+
+        return employees.stream()
+                .map(employee -> {
+                    List<AttendanceRecord> employeeRecords = recordsByEmployeeId.getOrDefault(employee.getId(), List.of()).stream()
+                            .sorted(Comparator.comparing(AttendanceRecord::getAttendanceDate).reversed()
+                                    .thenComparing(AttendanceRecord::getCheckInTime, Comparator.reverseOrder()))
+                            .toList();
+
+                    int lateDays = (int) employeeRecords.stream()
+                            .filter(AttendanceRecord::isLate)
+                            .count();
+                    int checkedOutDays = (int) employeeRecords.stream()
+                            .filter(record -> record.getStatus() == AttendanceStatus.CHECKED_OUT)
+                            .count();
+
+                    List<MonthlyAttendanceRecordRow> records = employeeRecords.stream()
+                            .map(record -> new MonthlyAttendanceRecordRow(
+                                    record.getAttendanceDate().format(DATE_FORMATTER),
+                                    record.getEmployee().getEmployeeCode(),
+                                    record.getEmployee().getName(),
+                                    record.getEmployee().getRole().name(),
+                                    toState(record),
+                                    formatCheckIn(record),
+                                    formatCheckOut(record),
+                                    buildNote(record)
+                            ))
+                            .toList();
+
+                    return new MonthlyAttendanceEmployeeDetailRow(
+                            employee.getEmployeeCode(),
+                            employee.getName(),
+                            employee.getRole().name(),
+                            employeeRecords.size(),
+                            lateDays,
+                            checkedOutDays,
+                            records
+                    );
+                })
+                .filter(detail -> !detail.records().isEmpty())
+                .toList();
+    }
+
+    public byte[] exportMonthlyAttendanceExcel(String employeeCode, YearMonth yearMonth) {
+        List<MonthlyAttendanceEmployeeRow> employeeRows = getMonthlyAttendanceEmployees(employeeCode, yearMonth);
+        List<MonthlyAttendanceRecordRow> recordRows = getMonthlyAttendanceRecords(employeeCode, yearMonth);
+
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setFillForegroundColor((short) 22);
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            Sheet summarySheet = workbook.createSheet("직원별 요약");
+            Row summaryHeaderRow = summarySheet.createRow(0);
+            String[] summaryHeaders = {"사번", "이름", "권한", "출근일수", "지각일수", "퇴근완료", "최근 출근일", "최근 상태"};
+            for (int index = 0; index < summaryHeaders.length; index++) {
+                Cell cell = summaryHeaderRow.createCell(index);
+                cell.setCellValue(summaryHeaders[index]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            for (int index = 0; index < employeeRows.size(); index++) {
+                MonthlyAttendanceEmployeeRow row = employeeRows.get(index);
+                Row sheetRow = summarySheet.createRow(index + 1);
+                sheetRow.createCell(0).setCellValue(row.employeeCode());
+                sheetRow.createCell(1).setCellValue(row.employeeName());
+                sheetRow.createCell(2).setCellValue(row.role());
+                sheetRow.createCell(3).setCellValue(row.attendanceDays());
+                sheetRow.createCell(4).setCellValue(row.lateDays());
+                sheetRow.createCell(5).setCellValue(row.checkedOutDays());
+                sheetRow.createCell(6).setCellValue(row.lastAttendanceDate());
+                sheetRow.createCell(7).setCellValue(row.lastState().getLabel());
+            }
+
+            Sheet detailSheet = workbook.createSheet("출근 상세");
+            Row detailHeaderRow = detailSheet.createRow(0);
+            String[] detailHeaders = {"날짜", "사번", "이름", "권한", "상태", "출근 시간", "퇴근 시간", "메모"};
+            for (int index = 0; index < detailHeaders.length; index++) {
+                Cell cell = detailHeaderRow.createCell(index);
+                cell.setCellValue(detailHeaders[index]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            for (int index = 0; index < recordRows.size(); index++) {
+                MonthlyAttendanceRecordRow row = recordRows.get(index);
+                Row sheetRow = detailSheet.createRow(index + 1);
+                sheetRow.createCell(0).setCellValue(row.attendanceDate());
+                sheetRow.createCell(1).setCellValue(row.employeeCode());
+                sheetRow.createCell(2).setCellValue(row.employeeName());
+                sheetRow.createCell(3).setCellValue(row.role());
+                sheetRow.createCell(4).setCellValue(row.state().getLabel());
+                sheetRow.createCell(5).setCellValue(row.checkInTime());
+                sheetRow.createCell(6).setCellValue(row.checkOutTime());
+                sheetRow.createCell(7).setCellValue(row.note());
+            }
+
+            for (int index = 0; index < summaryHeaders.length; index++) {
+                summarySheet.autoSizeColumn(index);
+                summarySheet.setColumnWidth(index, Math.max(summarySheet.getColumnWidth(index), 3600));
+            }
+
+            for (int index = 0; index < detailHeaders.length; index++) {
+                detailSheet.autoSizeColumn(index);
+                detailSheet.setColumnWidth(index, Math.max(detailSheet.getColumnWidth(index), 3600));
+            }
+
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException exception) {
+            throw new IllegalStateException("월별 출근 엑셀을 생성할 수 없습니다.", exception);
+        }
     }
 
     public List<EmployeeRow> getEmployees(String employeeCode, boolean showDeleted) {

@@ -39,7 +39,13 @@
         <section class="panel">
             <div class="panel-header">
                 <h2>조회 월 선택</h2>
-                <span class="pill neutral" th:text="${monthlySummary.monthLabel()}">2026년 3월</span>
+                <div class="action-row">
+                    <span class="pill neutral" th:text="${monthlySummary.monthLabel()}">2026년 3월</span>
+                    <a class="ghost-link"
+                       th:href="@{/attendance/monthly/excel(year=${selectedMonth.year}, month=${selectedMonth.monthValue})}">
+                        엑셀 다운로드
+                    </a>
+                </div>
             </div>
             <form th:action="@{/attendance/monthly}" method="get" class="filter-form">
                 <label>
@@ -116,6 +122,62 @@
                 </tr>
                 </tbody>
             </table>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <h2>직원별 월간 출근 상세</h2>
+                <span class="pill neutral" th:text="'총 ' + ${#lists.size(monthlyEmployeeDetails)} + '명'">총 0명</span>
+            </div>
+            <div class="empty-state" th:if="${#lists.isEmpty(monthlyEmployeeDetails)}">
+                선택한 월에 직원별 상세 내역이 없습니다.
+            </div>
+            <div class="employee-detail-grid" th:if="${!#lists.isEmpty(monthlyEmployeeDetails)}">
+                <article class="employee-detail-card" th:each="detail : ${monthlyEmployeeDetails}">
+                    <div class="employee-detail-header">
+                        <div>
+                            <h3>
+                                <span th:text="${detail.employeeName()}">홍길동</span>
+                                <small th:text="${detail.employeeCode()}">EMP001</small>
+                            </h3>
+                            <p th:text="${detail.role()}">EMPLOYEE</p>
+                        </div>
+                        <div class="employee-detail-metrics">
+                            <span class="pill neutral" th:text="'출근 ' + ${detail.attendanceDays()} + '일'">출근 0일</span>
+                            <span class="pill warning" th:text="'지각 ' + ${detail.lateDays()} + '일'">지각 0일</span>
+                            <span class="pill success" th:text="'퇴근완료 ' + ${detail.checkedOutDays()} + '일'">퇴근완료 0일</span>
+                        </div>
+                    </div>
+                    <table class="detail-table">
+                        <thead>
+                        <tr>
+                            <th>날짜</th>
+                            <th>상태</th>
+                            <th>출근 시간</th>
+                            <th>퇴근 시간</th>
+                            <th>메모</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="record : ${detail.records()}">
+                            <td th:text="${record.attendanceDate()}">2026.03.22</td>
+                            <td>
+                                <span class="pill"
+                                      th:text="${record.state().label}"
+                                      th:classappend="${record.state().name() == 'WORKING'} ? ' success' :
+                                                      (${record.state().name() == 'LATE'} ? ' warning' :
+                                                      (${record.state().name() == 'ABSENT'} ? ' danger' : ' neutral'))">
+                                    상태
+                                </span>
+                            </td>
+                            <td th:text="${record.checkInTime()}">09:00</td>
+                            <td th:text="${record.checkOutTime()}">18:00</td>
+                            <td th:text="${record.note()}">메모</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </article>
+            </div>
         </section>
 
         <section class="panel">
