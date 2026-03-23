@@ -347,6 +347,7 @@ public class AdminService {
                 parseOptionalTime(form.getWorkStartTime(), "출근 기준 시간"),
                 parseOptionalTime(form.getWorkEndTime(), "퇴근 기준 시간")
         );
+        applyPasswordChangePolicy(employee, form.getEmployeeRole());
         employeeRepository.save(employee);
     }
 
@@ -365,6 +366,7 @@ public class AdminService {
 
         if (form.getPassword() != null && !form.getPassword().isBlank()) {
             employee.updatePassword(passwordEncoder.encode(form.getPassword()));
+            applyPasswordChangePolicy(employee, form.getEmployeeRole());
         }
     }
 
@@ -433,6 +435,7 @@ public class AdminService {
                             parseOptionalTime(workStartTime, rowIndex + 1 + "행 출근 기준 시간"),
                             parseOptionalTime(workEndTime, rowIndex + 1 + "행 퇴근 기준 시간")
                     );
+                    applyPasswordChangePolicy(employee, employee.getRole());
                     employeeRepository.saveAndFlush(employee);
                     existingCodes.add(employeeCode);
                     successCount++;
@@ -553,6 +556,14 @@ public class AdminService {
             }
         }
         return true;
+    }
+
+    private void applyPasswordChangePolicy(Employee employee, EmployeeRole role) {
+        if (role == EmployeeRole.EMPLOYEE) {
+            employee.markPasswordChangeRequired();
+            return;
+        }
+        employee.markPasswordChanged();
     }
 
     private String readCell(Row row, int cellIndex) {
