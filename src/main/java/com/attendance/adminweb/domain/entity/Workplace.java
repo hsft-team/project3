@@ -35,15 +35,24 @@ public class Workplace extends BaseTimeEntity {
     @Column(nullable = false)
     private Integer allowedRadiusMeters;
 
+    @Column(name = "notice_message", length = 1000)
+    private String noticeMessage;
+
     protected Workplace() {
     }
 
-    public Workplace(Company company, String name, Double latitude, Double longitude, Integer allowedRadiusMeters) {
+    public Workplace(Company company,
+                     String name,
+                     Double latitude,
+                     Double longitude,
+                     Integer allowedRadiusMeters,
+                     String noticeMessage) {
         this.company = company;
         this.name = name;
         this.latitude = latitude;
         this.longitude = longitude;
         this.allowedRadiusMeters = allowedRadiusMeters;
+        this.noticeMessage = noticeMessage;
     }
 
     public Long getId() {
@@ -70,10 +79,19 @@ public class Workplace extends BaseTimeEntity {
         return allowedRadiusMeters;
     }
 
-    public void update(String name, Double latitude, Double longitude, Integer allowedRadiusMeters) {
+    public String getNoticeMessage() {
+        return noticeMessage;
+    }
+
+    public void update(String name,
+                       Double latitude,
+                       Double longitude,
+                       Integer allowedRadiusMeters,
+                       String noticeMessage) {
         this.name = name;
         this.latitude = latitude;
         this.longitude = longitude;
         this.allowedRadiusMeters = allowedRadiusMeters;
+        this.noticeMessage = noticeMessage;
     }
 }

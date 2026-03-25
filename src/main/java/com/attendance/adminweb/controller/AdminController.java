@@ -222,6 +222,8 @@ public class AdminController {
     @PostMapping("/employees")
     public String createEmployee(@Valid @ModelAttribute("employeeForm") EmployeeForm form,
                                  BindingResult bindingResult,
+                                 @RequestParam(defaultValue = "1") int page,
+                                 @RequestParam(defaultValue = "false") boolean showDeleted,
                                  RedirectAttributes redirectAttributes,
                                  Principal principal) {
         validateCreateEmployeeForm(form, bindingResult);
@@ -229,7 +231,7 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.employeeForm", bindingResult);
             redirectAttributes.addFlashAttribute("employeeForm", form);
             redirectAttributes.addFlashAttribute("editing", false);
-            return "redirect:/employees";
+            return "redirect:/employees?page=" + page + (showDeleted ? "&showDeleted=true" : "");
         }
 
         try {
@@ -240,7 +242,7 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("employeeForm", form);
         }
 
-        return "redirect:/employees";
+        return "redirect:/employees?page=" + page + (showDeleted ? "&showDeleted=true" : "");
     }
 
     @PostMapping("/employees/upload")
@@ -274,6 +276,8 @@ public class AdminController {
     public String updateEmployee(@PathVariable Long employeeId,
                                  @Valid @ModelAttribute("employeeForm") EmployeeForm form,
                                  BindingResult bindingResult,
+                                 @RequestParam(defaultValue = "1") int page,
+                                 @RequestParam(defaultValue = "false") boolean showDeleted,
                                  RedirectAttributes redirectAttributes,
                                  Principal principal) {
         validateUpdateEmployeeForm(form, bindingResult);
@@ -281,18 +285,18 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.employeeForm", bindingResult);
             redirectAttributes.addFlashAttribute("employeeForm", form);
             redirectAttributes.addFlashAttribute("editing", true);
-            return "redirect:/employees?editId=" + employeeId;
+            return "redirect:/employees?editId=" + employeeId + "&page=" + page + (showDeleted ? "&showDeleted=true" : "");
         }
 
         try {
             adminService.updateEmployee(principal.getName(), employeeId, form);
             redirectAttributes.addFlashAttribute("message", "직원 정보가 수정되었습니다.");
-            return "redirect:/employees";
+            return "redirect:/employees?page=" + page + (showDeleted ? "&showDeleted=true" : "");
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
             redirectAttributes.addFlashAttribute("employeeForm", form);
             redirectAttributes.addFlashAttribute("editing", true);
-            return "redirect:/employees?editId=" + employeeId;
+            return "redirect:/employees?editId=" + employeeId + "&page=" + page + (showDeleted ? "&showDeleted=true" : "");
         }
     }
 

@@ -418,7 +418,7 @@ public class AdminService {
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
             Row headerRow = sheet.createRow(0);
-            String[] headers = {"사번", "이름", "권한", "비밀번호", "출근 기준 시간", "퇴근 기준 시간"};
+            String[] headers = {"사번", "이름", "권한", "비밀번호", "사업장", "출근 기준 시간", "퇴근 기준 시간"};
             for (int index = 0; index < headers.length; index++) {
                 Cell cell = headerRow.createCell(index);
                 cell.setCellValue(headers[index]);
@@ -430,16 +430,18 @@ public class AdminService {
             sampleRow1.createCell(1).setCellValue("김서준");
             sampleRow1.createCell(2).setCellValue("EMPLOYEE");
             sampleRow1.createCell(3).setCellValue("password1234");
-            sampleRow1.createCell(4).setCellValue("09:00");
-            sampleRow1.createCell(5).setCellValue("18:00");
+            sampleRow1.createCell(4).setCellValue("강남점");
+            sampleRow1.createCell(5).setCellValue("09:00");
+            sampleRow1.createCell(6).setCellValue("18:00");
 
             Row sampleRow2 = sheet.createRow(2);
             sampleRow2.createCell(0).setCellValue("EMP005");
             sampleRow2.createCell(1).setCellValue("박소연");
             sampleRow2.createCell(2).setCellValue("ADMIN");
             sampleRow2.createCell(3).setCellValue("securepass1");
-            sampleRow2.createCell(4).setCellValue("10:00");
-            sampleRow2.createCell(5).setCellValue("19:00");
+            sampleRow2.createCell(4).setCellValue("");
+            sampleRow2.createCell(5).setCellValue("10:00");
+            sampleRow2.createCell(6).setCellValue("19:00");
 
             for (int index = 0; index < headers.length; index++) {
                 sheet.autoSizeColumn(index);
@@ -478,7 +480,8 @@ public class AdminService {
                         workplace.getName(),
                         workplace.getLatitude(),
                         workplace.getLongitude(),
-                        workplace.getAllowedRadiusMeters()
+                        workplace.getAllowedRadiusMeters(),
+                        workplace.getNoticeMessage()
                 ))
                 .toList();
     }
@@ -497,6 +500,7 @@ public class AdminService {
         form.setLatitude(workplace.getLatitude());
         form.setLongitude(workplace.getLongitude());
         form.setAllowedRadiusMeters(workplace.getAllowedRadiusMeters());
+        form.setNoticeMessage(workplace.getNoticeMessage());
         return form;
     }
 
@@ -536,7 +540,8 @@ public class AdminService {
                 form.getName().trim(),
                 form.getLatitude(),
                 form.getLongitude(),
-                form.getAllowedRadiusMeters()
+                form.getAllowedRadiusMeters(),
+                normalizeNoticeMessage(form.getNoticeMessage())
         ));
     }
 
@@ -547,7 +552,8 @@ public class AdminService {
                 form.getName().trim(),
                 form.getLatitude(),
                 form.getLongitude(),
-                form.getAllowedRadiusMeters()
+                form.getAllowedRadiusMeters(),
+                normalizeNoticeMessage(form.getNoticeMessage())
         );
     }
 
@@ -661,6 +667,12 @@ public class AdminService {
         Set<String> existingCodes = employeeRepository.findAllByCompanyIdOrderByNameAsc(admin.getCompany().getId()).stream()
                 .map(Employee::getEmployeeCode)
                 .collect(Collectors.toCollection(HashSet::new));
+        Map<String, Workplace> workplacesByName = workplaceRepository.findAllByCompanyIdOrderByNameAsc(admin.getCompany().getId()).stream()
+                .collect(Collectors.toMap(
+                        workplace -> workplace.getName().trim().toLowerCase(),
+                        Function.identity(),
+                        (first, second) -> first
+                ));
         List<String> failureMessages = new ArrayList<>();
         int successCount = 0;
 
@@ -680,17 +692,20 @@ public class AdminService {
                 String name = readCell(row, 1);
                 String roleValue = readCell(row, 2).toUpperCase();
                 String password = readCell(row, 3);
-                String workStartTime = readCell(row, 4);
-                String workEndTime = readCell(row, 5);
+                String workplaceName = readCell(row, 4);
+                String workStartTime = readCell(row, 5);
+                String workEndTime = readCell(row, 6);
 
                 try {
-                    validateUploadRow(rowIndex + 1, employeeCode, name, roleValue, password, workStartTime, workEndTime, existingCodes);
+                    validateUploadRow(rowIndex + 1, employeeCode, name, roleValue, password, workplaceName, workStartTime, workEndTime, existingCodes);
+                    Workplace workplace = resolveUploadWorkplace(rowIndex + 1, workplaceName, workplacesByName);
                     Employee employee = new Employee(
                             employeeCode,
                             name,
                             passwordEncoder.encode(password),
                             EmployeeRole.valueOf(roleValue),
                             admin.getCompany(),
+                            workplace,
                             parseOptionalTime(workStartTime, rowIndex + 1 + "행 출근 기준 시간"),
                             parseOptionalTime(workEndTime, rowIndex + 1 + "행 퇴근 기준 시간")
                     );
@@ -772,6 +787,7 @@ public class AdminService {
                                    String name,
                                    String roleValue,
                                    String password,
+                                   String workplaceName,
                                    String workStartTime,
                                    String workEndTime,
                                    Set<String> existingCodes) {
@@ -802,8 +818,25 @@ public class AdminService {
         if (password.length() < 8) {
             throw new IllegalArgumentException(rowNumber + "행: 비밀번호는 8자 이상이어야 합니다.");
         }
+        if (workplaceName.length() > 100) {
+            throw new IllegalArgumentException(rowNumber + "행: 사업장명은 100자 이하여야 합니다.");
+        }
         parseOptionalTime(workStartTime, rowNumber + "행 출근 기준 시간");
         parseOptionalTime(workEndTime, rowNumber + "행 퇴근 기준 시간");
+    }
+
+    private Workplace resolveUploadWorkplace(int rowNumber,
+                                             String workplaceName,
+                                             Map<String, Workplace> workplacesByName) {
+        if (workplaceName == null || workplaceName.isBlank()) {
+            return null;
+        }
+
+        Workplace workplace = workplacesByName.get(workplaceName.trim().toLowerCase());
+        if (workplace == null) {
+            throw new IllegalArgumentException(rowNumber + "행: 등록되지 않은 사업장입니다. (" + workplaceName + ")");
+        }
+        return workplace;
     }
 
     private String formatRegisteredDeviceName(Employee employee) {
@@ -827,7 +860,7 @@ public class AdminService {
         if (row == null) {
             return true;
         }
-        for (int index = 0; index < 6; index++) {
+        for (int index = 0; index < 7; index++) {
             if (!readCell(row, index).isBlank()) {
                 return false;
             }

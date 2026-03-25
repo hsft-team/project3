@@ -5,6 +5,7 @@ public record WorkplaceLocationView(
         String name,
         double latitude,
         double longitude,
-        int allowedRadiusMeters
+        int allowedRadiusMeters,
+        String noticeMessage
 ) {
 }

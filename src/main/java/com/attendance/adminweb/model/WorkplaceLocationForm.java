@@ -27,6 +27,9 @@ public class WorkplaceLocationForm {
     @Min(value = 10, message = "허용 반경은 10m 이상이어야 합니다.")
     private Integer allowedRadiusMeters;
 
+    @Size(max = 1000, message = "공지사항은 1000자 이하여야 합니다.")
+    private String noticeMessage;
+
     public String getName() {
         return name;
     }
@@ -57,5 +60,13 @@ public class WorkplaceLocationForm {
 
     public void setAllowedRadiusMeters(Integer allowedRadiusMeters) {
         this.allowedRadiusMeters = allowedRadiusMeters;
+    }
+
+    public String getNoticeMessage() {
+        return noticeMessage;
+    }
+
+    public void setNoticeMessage(String noticeMessage) {
+        this.noticeMessage = noticeMessage;
     }
 }

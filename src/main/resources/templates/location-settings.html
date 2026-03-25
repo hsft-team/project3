@@ -161,10 +161,11 @@
                         <span id="currentWorkplaceLongitudeText" th:text="${workplace.longitude()}">0</span>
                     </p>
                     <p><strong>허용 반경</strong> <span id="currentWorkplaceRadiusText" th:text="${workplace.allowedRadiusMeters()}">0</span>m</p>
+                    <p><strong>모바일 공지</strong> <span th:text="${#strings.isEmpty(workplace.noticeMessage()) ? '회사 기본 공지 사용' : '사업장 공지 사용 중'}">회사 기본 공지 사용</span></p>
                 </div>
                 <div class="map-help-card">
                     <strong>사업장 출근 기준</strong>
-                    <p>이 사업장으로 지정된 직원은 모바일에서 이 위치와 허용 반경을 기준으로 출근 가능 여부가 계산됩니다.</p>
+                    <p>이 사업장으로 지정된 직원은 모바일에서 이 위치와 허용 반경을 기준으로 출근 가능 여부가 계산됩니다. 사업장 공지를 비워두면 회사 기본 공지가 노출됩니다.</p>
                 </div>
             </article>
 
@@ -214,6 +215,23 @@
                         <small class="field-error" th:if="${#fields.hasErrors('allowedRadiusMeters')}" th:errors="*{allowedRadiusMeters}"></small>
                     </label>
 
+                    <label>
+                        모바일 공지사항
+                        <div class="editor-toolbar">
+                            <button type="button" class="ghost-link small-link editor-button" data-editor-action="heading">제목</button>
+                            <button type="button" class="ghost-link small-link editor-button" data-editor-action="bold">굵게</button>
+                            <button type="button" class="ghost-link small-link editor-button" data-editor-action="bullet">목록</button>
+                            <button type="button" class="ghost-link small-link editor-button" data-editor-action="color">색상</button>
+                            <button type="button" class="ghost-link small-link editor-button" data-editor-action="link">링크</button>
+                        </div>
+                        <textarea th:field="*{noticeMessage}"
+                                  id="workplaceNoticeMessageInput"
+                                  rows="5"
+                                  placeholder="이 사업장 직원에게만 노출할 공지사항을 입력해 주세요. 비워두면 회사 기본 공지를 사용합니다."></textarea>
+                        <small class="field-error">사업장 공지를 비워두면 회사 기본 공지사항이 그대로 노출됩니다.</small>
+                        <small class="field-error" th:if="${#fields.hasErrors('noticeMessage')}" th:errors="*{noticeMessage}"></small>
+                    </label>
+
                     <button type="submit" class="primary-button">사업장 저장</button>
                 </form>
             </article>
@@ -249,6 +267,13 @@
                         <small class="field-error" th:if="${#fields.hasErrors('longitude')}" th:errors="*{longitude}"></small>
                     </label>
                 </div>
+                <label>
+                    모바일 공지사항
+                    <textarea th:field="*{noticeMessage}"
+                              rows="4"
+                              placeholder="이 사업장 전용 공지사항이 있으면 입력해 주세요. 비워두면 회사 기본 공지를 사용합니다."></textarea>
+                    <small class="field-error" th:if="${#fields.hasErrors('noticeMessage')}" th:errors="*{noticeMessage}"></small>
+                </label>
                 <div class="button-row">
                     <button type="submit" class="primary-button">사업장 추가</button>
                 </div>
@@ -421,41 +446,42 @@
         currentRadiusTextId: "currentWorkplaceRadiusText"
     });
 
-    const noticeMessageInput = document.getElementById("noticeMessageInput");
     const editorButtons = document.querySelectorAll("[data-editor-action]");
 
-    function wrapNoticeSelection(prefix, suffix, placeholder) {
-        if (!noticeMessageInput) {
+    function wrapNoticeSelection(textarea, prefix, suffix, placeholder) {
+        if (!textarea) {
             return;
         }
 
-        const start = noticeMessageInput.selectionStart ?? 0;
-        const end = noticeMessageInput.selectionEnd ?? 0;
-        const selectedText = noticeMessageInput.value.slice(start, end) || placeholder;
-        const before = noticeMessageInput.value.slice(0, start);
-        const after = noticeMessageInput.value.slice(end);
+        const start = textarea.selectionStart ?? 0;
+        const end = textarea.selectionEnd ?? 0;
+        const selectedText = textarea.value.slice(start, end) || placeholder;
+        const before = textarea.value.slice(0, start);
+        const after = textarea.value.slice(end);
         const nextValue = before + prefix + selectedText + suffix + after;
 
-        noticeMessageInput.value = nextValue;
-        noticeMessageInput.focus();
+        textarea.value = nextValue;
+        textarea.focus();
         const selectionStart = before.length + prefix.length;
         const selectionEnd = selectionStart + selectedText.length;
-        noticeMessageInput.setSelectionRange(selectionStart, selectionEnd);
+        textarea.setSelectionRange(selectionStart, selectionEnd);
     }
 
     editorButtons.forEach((button) => {
         button.addEventListener("click", () => {
             const action = button.dataset.editorAction;
+            const editorLabel = button.closest("label");
+            const targetTextarea = editorLabel ? editorLabel.querySelector("textarea") : null;
             if (action === "heading") {
-                wrapNoticeSelection("## ", "", "제목");
+                wrapNoticeSelection(targetTextarea, "## ", "", "제목");
             } else if (action === "bold") {
-                wrapNoticeSelection("**", "**", "강조 문구");
+                wrapNoticeSelection(targetTextarea, "**", "**", "강조 문구");
             } else if (action === "bullet") {
-                wrapNoticeSelection("- ", "", "공지 항목");
+                wrapNoticeSelection(targetTextarea, "- ", "", "공지 항목");
             } else if (action === "color") {
-                wrapNoticeSelection("{color:#0f766e}", "{/color}", "강조 색상 문구");
+                wrapNoticeSelection(targetTextarea, "{color:#0f766e}", "{/color}", "강조 색상 문구");
             } else if (action === "link") {
-                wrapNoticeSelection("[링크 문구](", "https://example.com)", "https://example.com");
+                wrapNoticeSelection(targetTextarea, "[링크 문구](", "https://example.com)", "https://example.com");
             }
         });
     });
