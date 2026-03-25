@@ -97,6 +97,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\deploy-prod.ps1
 - `scripts/*.ps1` 안의 DB 접속 정보는 실제 운영값으로 맞춰야 합니다.
 - 현재 기본 예시는 `attendance_user / change-this-db-password` 기준입니다.
 
+### GitHub Self-Hosted Runner 배포
+
+미니PC를 GitHub self-hosted runner 로 등록했다면 GitHub 웹 UI에서 바로 배포할 수 있습니다.
+
+- workflow: [deploy-self-hosted.yml](/Users/hyeonseobkim/workspace/attendance-app/admin-web/.github/workflows/deploy-self-hosted.yml)
+- 가이드: [GITHUB_SELF_HOSTED_DEPLOYMENT.md](/Users/hyeonseobkim/workspace/attendance-app/admin-web/docs/GITHUB_SELF_HOSTED_DEPLOYMENT.md)
+
 ## 기본 로그인 계정
 
 - 아이디: `ADMIN001`
