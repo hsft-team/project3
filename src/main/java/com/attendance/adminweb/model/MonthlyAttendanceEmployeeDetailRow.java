@@ -5,6 +5,7 @@ import java.util.List;
 public record MonthlyAttendanceEmployeeDetailRow(
         String employeeCode,
         String employeeName,
+        String workplaceName,
         String role,
         int attendanceDays,
         int lateDays,

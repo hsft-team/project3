@@ -4,6 +4,7 @@ public record MonthlyAttendanceRecordRow(
         String attendanceDate,
         String employeeCode,
         String employeeName,
+        String workplaceName,
         String role,
         AttendanceState state,
         String checkInTime,

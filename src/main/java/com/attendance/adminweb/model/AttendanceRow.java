@@ -3,6 +3,7 @@ package com.attendance.adminweb.model;
 public record AttendanceRow(
         String employeeCode,
         String employeeName,
+        String workplaceName,
         String role,
         AttendanceState state,
         String checkInTime,

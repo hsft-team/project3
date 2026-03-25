@@ -91,8 +91,8 @@ public class AdminService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public DashboardSummary getTodaySummary(String employeeCode) {
-        List<Employee> employees = getCompanyEmployees(employeeCode);
+    public DashboardSummary getTodaySummary(String employeeCode, Long workplaceId) {
+        List<Employee> employees = getCompanyEmployees(employeeCode, workplaceId);
         Map<Long, AttendanceRecord> recordsByEmployeeId = getTodayRecordsByEmployee(employees);
 
         int total = employees.size();
@@ -120,8 +120,8 @@ public class AdminService {
         return new DashboardSummary(total, present, late, absent, checkedOut);
     }
 
-    public List<AttendanceRow> getTodayAttendances(String employeeCode, String filter) {
-        List<Employee> employees = getCompanyEmployees(employeeCode);
+    public List<AttendanceRow> getTodayAttendances(String employeeCode, String filter, Long workplaceId) {
+        List<Employee> employees = getCompanyEmployees(employeeCode, workplaceId);
         Map<Long, AttendanceRecord> recordsByEmployeeId = getTodayRecordsByEmployee(employees);
 
         return employees.stream()
@@ -131,6 +131,7 @@ public class AdminService {
                     return new AttendanceRow(
                             employee.getEmployeeCode(),
                             employee.getName(),
+                            getWorkplaceName(employee),
                             employee.getRole().name(),
                             state,
                             formatCheckIn(record),
@@ -142,9 +143,12 @@ public class AdminService {
                 .toList();
     }
 
-    public MonthlyAttendanceSummary getMonthlyAttendanceSummary(String employeeCode, YearMonth yearMonth) {
-        List<Employee> employees = getCompanyEmployees(employeeCode);
-        List<AttendanceRecord> records = getMonthlyRecords(employeeCode, yearMonth);
+    public MonthlyAttendanceSummary getMonthlyAttendanceSummary(String employeeCode, YearMonth yearMonth, Long workplaceId) {
+        List<Employee> employees = getCompanyEmployees(employeeCode, workplaceId);
+        Set<Long> employeeIds = employees.stream().map(Employee::getId).collect(Collectors.toSet());
+        List<AttendanceRecord> records = getMonthlyRecords(employeeCode, yearMonth).stream()
+                .filter(record -> employeeIds.contains(record.getEmployee().getId()))
+                .toList();
         Set<Long> attendedEmployeeIds = records.stream()
                 .map(record -> record.getEmployee().getId())
                 .collect(Collectors.toSet());
@@ -166,9 +170,11 @@ public class AdminService {
         );
     }
 
-    public List<MonthlyAttendanceEmployeeRow> getMonthlyAttendanceEmployees(String employeeCode, YearMonth yearMonth) {
-        List<Employee> employees = getCompanyEmployees(employeeCode);
+    public List<MonthlyAttendanceEmployeeRow> getMonthlyAttendanceEmployees(String employeeCode, YearMonth yearMonth, Long workplaceId) {
+        List<Employee> employees = getCompanyEmployees(employeeCode, workplaceId);
+        Set<Long> employeeIds = employees.stream().map(Employee::getId).collect(Collectors.toSet());
         Map<Long, List<AttendanceRecord>> recordsByEmployeeId = getMonthlyRecords(employeeCode, yearMonth).stream()
+                .filter(record -> employeeIds.contains(record.getEmployee().getId()))
                 .collect(Collectors.groupingBy(record -> record.getEmployee().getId()));
 
         return employees.stream()
@@ -189,6 +195,7 @@ public class AdminService {
                     return new MonthlyAttendanceEmployeeRow(
                             employee.getEmployeeCode(),
                             employee.getName(),
+                            getWorkplaceName(employee),
                             employee.getRole().name(),
                             records.size(),
                             lateDays,
@@ -200,14 +207,20 @@ public class AdminService {
                 .toList();
     }
 
-    public List<MonthlyAttendanceRecordRow> getMonthlyAttendanceRecords(String employeeCode, YearMonth yearMonth) {
+    public List<MonthlyAttendanceRecordRow> getMonthlyAttendanceRecords(String employeeCode, YearMonth yearMonth, Long workplaceId) {
+        Set<Long> employeeIds = getCompanyEmployees(employeeCode, workplaceId).stream()
+                .map(Employee::getId)
+                .collect(Collectors.toSet());
+
         return getMonthlyRecords(employeeCode, yearMonth).stream()
+                .filter(record -> employeeIds.contains(record.getEmployee().getId()))
                 .sorted(Comparator.comparing(AttendanceRecord::getAttendanceDate).reversed()
                         .thenComparing(AttendanceRecord::getCheckInTime, Comparator.reverseOrder()))
                 .map(record -> new MonthlyAttendanceRecordRow(
                         record.getAttendanceDate().format(DATE_FORMATTER),
                         record.getEmployee().getEmployeeCode(),
                         record.getEmployee().getName(),
+                        getWorkplaceName(record.getEmployee()),
                         record.getEmployee().getRole().name(),
                         toState(record),
                         formatCheckIn(record),
@@ -219,13 +232,16 @@ public class AdminService {
 
     public MonthlyAttendanceEmployeeDetailRow getMonthlyAttendanceEmployeeDetail(String employeeCode,
                                                                                  YearMonth yearMonth,
-                                                                                 String selectedEmployeeCode) {
+                                                                                 String selectedEmployeeCode,
+                                                                                 Long workplaceId) {
         if (selectedEmployeeCode == null || selectedEmployeeCode.isBlank()) {
             return null;
         }
 
-        List<Employee> employees = getCompanyEmployees(employeeCode);
+        List<Employee> employees = getCompanyEmployees(employeeCode, workplaceId);
+        Set<Long> employeeIds = employees.stream().map(Employee::getId).collect(Collectors.toSet());
         Map<Long, List<AttendanceRecord>> recordsByEmployeeId = getMonthlyRecords(employeeCode, yearMonth).stream()
+                .filter(record -> employeeIds.contains(record.getEmployee().getId()))
                 .collect(Collectors.groupingBy(record -> record.getEmployee().getId()));
 
         return employees.stream()
@@ -248,6 +264,7 @@ public class AdminService {
                                     record.getAttendanceDate().format(DATE_FORMATTER),
                                     record.getEmployee().getEmployeeCode(),
                                     record.getEmployee().getName(),
+                                    getWorkplaceName(record.getEmployee()),
                                     record.getEmployee().getRole().name(),
                                     toState(record),
                                     formatCheckIn(record),
@@ -259,6 +276,7 @@ public class AdminService {
                     return new MonthlyAttendanceEmployeeDetailRow(
                             employee.getEmployeeCode(),
                             employee.getName(),
+                            getWorkplaceName(employee),
                             employee.getRole().name(),
                             employeeRecords.size(),
                             lateDays,
@@ -270,9 +288,9 @@ public class AdminService {
                 .orElse(null);
     }
 
-    public byte[] exportMonthlyAttendanceExcel(String employeeCode, YearMonth yearMonth) {
-        List<MonthlyAttendanceEmployeeRow> employeeRows = getMonthlyAttendanceEmployees(employeeCode, yearMonth);
-        List<MonthlyAttendanceRecordRow> recordRows = getMonthlyAttendanceRecords(employeeCode, yearMonth);
+    public byte[] exportMonthlyAttendanceExcel(String employeeCode, YearMonth yearMonth, Long workplaceId) {
+        List<MonthlyAttendanceEmployeeRow> employeeRows = getMonthlyAttendanceEmployees(employeeCode, yearMonth, workplaceId);
+        List<MonthlyAttendanceRecordRow> recordRows = getMonthlyAttendanceRecords(employeeCode, yearMonth, workplaceId);
 
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
@@ -286,7 +304,7 @@ public class AdminService {
 
             Sheet summarySheet = workbook.createSheet("직원별 요약");
             Row summaryHeaderRow = summarySheet.createRow(0);
-            String[] summaryHeaders = {"사번", "이름", "권한", "출근일수", "지각일수", "퇴근완료", "최근 출근일", "최근 상태"};
+            String[] summaryHeaders = {"사번", "이름", "사업장", "권한", "출근일수", "지각일수", "퇴근완료", "최근 출근일", "최근 상태"};
             for (int index = 0; index < summaryHeaders.length; index++) {
                 Cell cell = summaryHeaderRow.createCell(index);
                 cell.setCellValue(summaryHeaders[index]);
@@ -298,17 +316,18 @@ public class AdminService {
                 Row sheetRow = summarySheet.createRow(index + 1);
                 sheetRow.createCell(0).setCellValue(row.employeeCode());
                 sheetRow.createCell(1).setCellValue(row.employeeName());
-                sheetRow.createCell(2).setCellValue(row.role());
-                sheetRow.createCell(3).setCellValue(row.attendanceDays());
-                sheetRow.createCell(4).setCellValue(row.lateDays());
-                sheetRow.createCell(5).setCellValue(row.checkedOutDays());
-                sheetRow.createCell(6).setCellValue(row.lastAttendanceDate());
-                sheetRow.createCell(7).setCellValue(row.lastState().getLabel());
+                sheetRow.createCell(2).setCellValue(row.workplaceName());
+                sheetRow.createCell(3).setCellValue(row.role());
+                sheetRow.createCell(4).setCellValue(row.attendanceDays());
+                sheetRow.createCell(5).setCellValue(row.lateDays());
+                sheetRow.createCell(6).setCellValue(row.checkedOutDays());
+                sheetRow.createCell(7).setCellValue(row.lastAttendanceDate());
+                sheetRow.createCell(8).setCellValue(row.lastState().getLabel());
             }
 
             Sheet detailSheet = workbook.createSheet("출근 상세");
             Row detailHeaderRow = detailSheet.createRow(0);
-            String[] detailHeaders = {"날짜", "사번", "이름", "권한", "상태", "출근 시간", "퇴근 시간", "메모"};
+            String[] detailHeaders = {"날짜", "사번", "이름", "사업장", "권한", "상태", "출근 시간", "퇴근 시간", "메모"};
             for (int index = 0; index < detailHeaders.length; index++) {
                 Cell cell = detailHeaderRow.createCell(index);
                 cell.setCellValue(detailHeaders[index]);
@@ -321,11 +340,12 @@ public class AdminService {
                 sheetRow.createCell(0).setCellValue(row.attendanceDate());
                 sheetRow.createCell(1).setCellValue(row.employeeCode());
                 sheetRow.createCell(2).setCellValue(row.employeeName());
-                sheetRow.createCell(3).setCellValue(row.role());
-                sheetRow.createCell(4).setCellValue(row.state().getLabel());
-                sheetRow.createCell(5).setCellValue(row.checkInTime());
-                sheetRow.createCell(6).setCellValue(row.checkOutTime());
-                sheetRow.createCell(7).setCellValue(row.note());
+                sheetRow.createCell(3).setCellValue(row.workplaceName());
+                sheetRow.createCell(4).setCellValue(row.role());
+                sheetRow.createCell(5).setCellValue(row.state().getLabel());
+                sheetRow.createCell(6).setCellValue(row.checkInTime());
+                sheetRow.createCell(7).setCellValue(row.checkOutTime());
+                sheetRow.createCell(8).setCellValue(row.note());
             }
 
             for (int index = 0; index < summaryHeaders.length; index++) {
@@ -345,8 +365,8 @@ public class AdminService {
         }
     }
 
-    public EmployeePage getEmployees(String employeeCode, boolean showDeleted, int page, int pageSize) {
-        List<Employee> employees = getEmployeeList(employeeCode, showDeleted);
+    public EmployeePage getEmployees(String employeeCode, boolean showDeleted, Long workplaceId, int page, int pageSize) {
+        List<Employee> employees = getEmployeeList(employeeCode, showDeleted, workplaceId);
         Map<Long, AttendanceRecord> recordsByEmployeeId = getTodayRecordsByEmployee(employees);
 
         List<EmployeeRow> employeeRows = employees.stream()
@@ -731,12 +751,34 @@ public class AdminService {
         return employeeRepository.findAllByCompanyIdAndActiveTrueAndDeletedFalseOrderByNameAsc(admin.getCompany().getId());
     }
 
+    private List<Employee> getCompanyEmployees(String employeeCode, Long workplaceId) {
+        return filterByWorkplace(getCompanyEmployees(employeeCode), workplaceId);
+    }
+
     private List<Employee> getEmployeeList(String employeeCode, boolean showDeleted) {
         Employee admin = getEmployeeByCode(employeeCode);
         if (showDeleted) {
             return employeeRepository.findAllByCompanyIdAndDeletedTrueOrderByNameAsc(admin.getCompany().getId());
         }
         return employeeRepository.findAllByCompanyIdAndDeletedFalseOrderByNameAsc(admin.getCompany().getId());
+    }
+
+    private List<Employee> getEmployeeList(String employeeCode, boolean showDeleted, Long workplaceId) {
+        return filterByWorkplace(getEmployeeList(employeeCode, showDeleted), workplaceId);
+    }
+
+    private List<Employee> filterByWorkplace(List<Employee> employees, Long workplaceId) {
+        if (workplaceId == null) {
+            return employees;
+        }
+        if (workplaceId == 0L) {
+            return employees.stream()
+                    .filter(employee -> employee.getWorkplace() == null)
+                    .toList();
+        }
+        return employees.stream()
+                .filter(employee -> employee.getWorkplace() != null && workplaceId.equals(employee.getWorkplace().getId()))
+                .toList();
     }
 
     private Employee getEmployeeByCode(String employeeCode) {
@@ -769,6 +811,10 @@ public class AdminService {
 
         return workplaceRepository.findByIdAndCompanyId(workplaceId, employee.getCompany().getId())
                 .orElseThrow(() -> new IllegalArgumentException("같은 회사 소속 사업장만 선택할 수 있습니다."));
+    }
+
+    private String getWorkplaceName(Employee employee) {
+        return employee.getWorkplace() == null ? "본사" : employee.getWorkplace().getName();
     }
 
     private void validateDuplicateEmployeeCode(String employeeCode, Long employeeId) {

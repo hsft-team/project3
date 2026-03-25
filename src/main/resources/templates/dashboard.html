@@ -34,32 +34,53 @@
             <p>직원들의 출근 상태를 한눈에 확인할 수 있습니다.</p>
         </section>
 
+        <section class="panel">
+            <div class="panel-header">
+                <h2>사업장 필터</h2>
+            </div>
+            <form th:action="@{/dashboard}" method="get" class="filter-form">
+                <input type="hidden" name="filter" th:value="${selectedFilter}">
+                <label>
+                    사업장
+                    <select name="workplaceId">
+                        <option value="">전체</option>
+                        <option value="0" th:selected="${selectedWorkplaceId != null and selectedWorkplaceId == 0}">본사</option>
+                        <option th:each="workplace : ${workplaceOptions}"
+                                th:value="${workplace.id()}"
+                                th:selected="${selectedWorkplaceId != null and selectedWorkplaceId == workplace.id()}"
+                                th:text="${workplace.name()}">사업장</option>
+                    </select>
+                </label>
+                <button type="submit" class="primary-button">적용</button>
+            </form>
+        </section>
+
         <section class="card-grid">
-            <a th:href="@{/dashboard}" class="stat-link">
+            <a th:href="@{/dashboard(workplaceId=${selectedWorkplaceId})}" class="stat-link">
                 <article class="stat-card" th:classappend="${selectedFilter == 'ALL'} ? ' selected'">
                     <span>전체 직원</span>
                     <strong th:text="${summary.totalEmployees()}">0</strong>
                 </article>
             </a>
-            <a th:href="@{/dashboard(filter='PRESENT')}" class="stat-link">
+            <a th:href="@{/dashboard(filter='PRESENT', workplaceId=${selectedWorkplaceId})}" class="stat-link">
                 <article class="stat-card" th:classappend="${selectedFilter == 'PRESENT'} ? ' selected'">
                     <span>정상 출근</span>
                     <strong th:text="${summary.presentCount()}">0</strong>
                 </article>
             </a>
-            <a th:href="@{/dashboard(filter='LATE')}" class="stat-link">
+            <a th:href="@{/dashboard(filter='LATE', workplaceId=${selectedWorkplaceId})}" class="stat-link">
                 <article class="stat-card warning" th:classappend="${selectedFilter == 'LATE'} ? ' selected'">
                     <span>지각</span>
                     <strong th:text="${summary.lateCount()}">0</strong>
                 </article>
             </a>
-            <a th:href="@{/dashboard(filter='ABSENT')}" class="stat-link">
+            <a th:href="@{/dashboard(filter='ABSENT', workplaceId=${selectedWorkplaceId})}" class="stat-link">
                 <article class="stat-card danger" th:classappend="${selectedFilter == 'ABSENT'} ? ' selected'">
                     <span>미출근</span>
                     <strong th:text="${summary.absentCount()}">0</strong>
                 </article>
             </a>
-            <a th:href="@{/dashboard(filter='CHECKED_OUT')}" class="stat-link">
+            <a th:href="@{/dashboard(filter='CHECKED_OUT', workplaceId=${selectedWorkplaceId})}" class="stat-link">
                 <article class="stat-card" th:classappend="${selectedFilter == 'CHECKED_OUT'} ? ' selected'">
                     <span>퇴근 완료</span>
                     <strong th:text="${summary.checkedOutCount()}">0</strong>
@@ -72,7 +93,9 @@
                 <h2 th:text="${selectedFilterLabel} + ' 목록'">실시간 출근 목록</h2>
                 <div class="button-row">
                     <span class="pill neutral" th:text="'총 ' + ${#lists.size(recentAttendances)} + '명'">총 0명</span>
-                    <a th:if="${selectedFilter != 'ALL'}" th:href="@{/dashboard}" class="ghost-link small-link">전체 보기</a>
+                    <a th:if="${selectedFilter != 'ALL'}"
+                       th:href="@{/dashboard(workplaceId=${selectedWorkplaceId})}"
+                       class="ghost-link small-link">전체 보기</a>
                 </div>
             </div>
             <div class="empty-state" th:if="${#lists.isEmpty(recentAttendances)}">선택한 조건에 해당하는 직원이 없습니다.</div>
@@ -81,6 +104,7 @@
                 <tr>
                     <th>사번</th>
                     <th>이름</th>
+                    <th>사업장</th>
                     <th>권한</th>
                     <th>상태</th>
                     <th>출근 시간</th>
@@ -92,6 +116,7 @@
                 <tr th:each="record : ${recentAttendances}">
                     <td th:text="${record.employeeCode()}">EMP001</td>
                     <td th:text="${record.employeeName()}">홍길동</td>
+                    <td th:text="${record.workplaceName()}">본사</td>
                     <td th:text="${record.role()}">EMPLOYEE</td>
                     <td>
                         <span class="pill"

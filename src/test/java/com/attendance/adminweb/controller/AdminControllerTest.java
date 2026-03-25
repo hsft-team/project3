@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
@@ -54,12 +55,13 @@ class AdminControllerTest {
     @Test
     @WithMockUser(username = "ADMIN001", roles = "ADMIN")
     void dashboardShouldRenderForAuthenticatedUser() throws Exception {
-        given(adminService.getTodaySummary(anyString()))
+        given(adminService.getTodaySummary(anyString(), nullable(Long.class)))
                 .willReturn(new DashboardSummary(2, 1, 0, 1, 0));
         given(adminService.normalizeDashboardFilter(anyString())).willReturn("ALL");
         given(adminService.getDashboardFilterLabel(anyString())).willReturn("전체 직원");
-        given(adminService.getTodayAttendances(anyString(), anyString()))
+        given(adminService.getTodayAttendances(anyString(), anyString(), nullable(Long.class)))
                 .willReturn(List.of());
+        given(adminService.getWorkplaceOptions(anyString())).willReturn(List.of());
         given(adminService.getCompanyLocation(anyString()))
                 .willReturn(new CompanyLocationView("OpenAI Seoul Office", 37.5665, 126.9780, 100, "09:00", "", true));
 

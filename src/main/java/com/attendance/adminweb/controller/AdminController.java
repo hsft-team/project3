@@ -44,12 +44,17 @@ public class AdminController {
     }
 
     @GetMapping("/dashboard")
-    public String dashboard(@RequestParam(required = false) String filter, Model model, Principal principal) {
+    public String dashboard(@RequestParam(required = false) String filter,
+                            @RequestParam(required = false) Long workplaceId,
+                            Model model,
+                            Principal principal) {
         String normalizedFilter = adminService.normalizeDashboardFilter(filter);
         model.addAttribute("selectedFilter", normalizedFilter);
         model.addAttribute("selectedFilterLabel", adminService.getDashboardFilterLabel(normalizedFilter));
-        model.addAttribute("summary", adminService.getTodaySummary(principal.getName()));
-        model.addAttribute("recentAttendances", adminService.getTodayAttendances(principal.getName(), normalizedFilter));
+        model.addAttribute("selectedWorkplaceId", workplaceId);
+        model.addAttribute("workplaceOptions", adminService.getWorkplaceOptions(principal.getName()));
+        model.addAttribute("summary", adminService.getTodaySummary(principal.getName(), workplaceId));
+        model.addAttribute("recentAttendances", adminService.getTodayAttendances(principal.getName(), normalizedFilter, workplaceId));
         return "dashboard";
     }
 
@@ -57,26 +62,30 @@ public class AdminController {
     public String monthlyAttendance(@RequestParam(required = false) Integer year,
                                     @RequestParam(required = false) Integer month,
                                     @RequestParam(required = false) String employeeCode,
+                                    @RequestParam(required = false) Long workplaceId,
                                     Model model,
                                     Principal principal) {
         YearMonth selectedMonth = resolveYearMonth(year, month);
 
         model.addAttribute("selectedMonth", selectedMonth);
         model.addAttribute("selectedEmployeeCode", employeeCode);
-        model.addAttribute("monthlySummary", adminService.getMonthlyAttendanceSummary(principal.getName(), selectedMonth));
-        model.addAttribute("monthlyEmployees", adminService.getMonthlyAttendanceEmployees(principal.getName(), selectedMonth));
-        model.addAttribute("monthlyAttendances", adminService.getMonthlyAttendanceRecords(principal.getName(), selectedMonth));
+        model.addAttribute("selectedWorkplaceId", workplaceId);
+        model.addAttribute("workplaceOptions", adminService.getWorkplaceOptions(principal.getName()));
+        model.addAttribute("monthlySummary", adminService.getMonthlyAttendanceSummary(principal.getName(), selectedMonth, workplaceId));
+        model.addAttribute("monthlyEmployees", adminService.getMonthlyAttendanceEmployees(principal.getName(), selectedMonth, workplaceId));
+        model.addAttribute("monthlyAttendances", adminService.getMonthlyAttendanceRecords(principal.getName(), selectedMonth, workplaceId));
         model.addAttribute("selectedEmployeeDetail",
-                adminService.getMonthlyAttendanceEmployeeDetail(principal.getName(), selectedMonth, employeeCode));
+                adminService.getMonthlyAttendanceEmployeeDetail(principal.getName(), selectedMonth, employeeCode, workplaceId));
         return "monthly-attendance";
     }
 
     @GetMapping("/attendance/monthly/excel")
     public ResponseEntity<ByteArrayResource> downloadMonthlyAttendanceExcel(@RequestParam Integer year,
                                                                             @RequestParam Integer month,
+                                                                            @RequestParam(required = false) Long workplaceId,
                                                                             Principal principal) {
         YearMonth selectedMonth = resolveYearMonth(year, month);
-        byte[] fileBytes = adminService.exportMonthlyAttendanceExcel(principal.getName(), selectedMonth);
+        byte[] fileBytes = adminService.exportMonthlyAttendanceExcel(principal.getName(), selectedMonth, workplaceId);
         String fileName = "monthly-attendance-" + selectedMonth + ".xlsx";
 
         return ResponseEntity.ok()
@@ -105,9 +114,10 @@ public class AdminController {
     public String employees(@RequestParam(required = false) Long editId,
                             @RequestParam(defaultValue = "1") int page,
                             @RequestParam(defaultValue = "false") boolean showDeleted,
+                            @RequestParam(required = false) Long workplaceId,
                             Model model,
                             Principal principal) {
-        EmployeePage employeePage = adminService.getEmployees(principal.getName(), showDeleted, page, EMPLOYEE_PAGE_SIZE);
+        EmployeePage employeePage = adminService.getEmployees(principal.getName(), showDeleted, workplaceId, page, EMPLOYEE_PAGE_SIZE);
         model.addAttribute("employees", employeePage.employees());
         model.addAttribute("currentPage", employeePage.currentPage());
         model.addAttribute("totalPages", employeePage.totalPages());
@@ -117,6 +127,7 @@ public class AdminController {
         model.addAttribute("hasNextPage", employeePage.hasNext());
         model.addAttribute("editId", editId);
         model.addAttribute("showDeleted", showDeleted);
+        model.addAttribute("selectedWorkplaceId", workplaceId);
         model.addAttribute("workplaceOptions", adminService.getWorkplaceOptions(principal.getName()));
         if (!model.containsAttribute("employeeForm")) {
             model.addAttribute("employeeForm", editId == null
@@ -224,6 +235,7 @@ public class AdminController {
                                  BindingResult bindingResult,
                                  @RequestParam(defaultValue = "1") int page,
                                  @RequestParam(defaultValue = "false") boolean showDeleted,
+                                 @RequestParam(required = false) Long workplaceId,
                                  RedirectAttributes redirectAttributes,
                                  Principal principal) {
         validateCreateEmployeeForm(form, bindingResult);
@@ -231,7 +243,7 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.employeeForm", bindingResult);
             redirectAttributes.addFlashAttribute("employeeForm", form);
             redirectAttributes.addFlashAttribute("editing", false);
-            return "redirect:/employees?page=" + page + (showDeleted ? "&showDeleted=true" : "");
+            return buildEmployeesRedirect(page, showDeleted, workplaceId, null);
         }
 
         try {
@@ -242,7 +254,7 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("employeeForm", form);
         }
 
-        return "redirect:/employees?page=" + page + (showDeleted ? "&showDeleted=true" : "");
+        return buildEmployeesRedirect(page, showDeleted, workplaceId, null);
     }
 
     @PostMapping("/employees/upload")
@@ -278,6 +290,7 @@ public class AdminController {
                                  BindingResult bindingResult,
                                  @RequestParam(defaultValue = "1") int page,
                                  @RequestParam(defaultValue = "false") boolean showDeleted,
+                                 @RequestParam(required = false) Long workplaceId,
                                  RedirectAttributes redirectAttributes,
                                  Principal principal) {
         validateUpdateEmployeeForm(form, bindingResult);
@@ -285,18 +298,18 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.employeeForm", bindingResult);
             redirectAttributes.addFlashAttribute("employeeForm", form);
             redirectAttributes.addFlashAttribute("editing", true);
-            return "redirect:/employees?editId=" + employeeId + "&page=" + page + (showDeleted ? "&showDeleted=true" : "");
+            return buildEmployeesRedirect(page, showDeleted, workplaceId, employeeId);
         }
 
         try {
             adminService.updateEmployee(principal.getName(), employeeId, form);
             redirectAttributes.addFlashAttribute("message", "직원 정보가 수정되었습니다.");
-            return "redirect:/employees?page=" + page + (showDeleted ? "&showDeleted=true" : "");
+            return buildEmployeesRedirect(page, showDeleted, workplaceId, null);
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
             redirectAttributes.addFlashAttribute("employeeForm", form);
             redirectAttributes.addFlashAttribute("editing", true);
-            return "redirect:/employees?editId=" + employeeId + "&page=" + page + (showDeleted ? "&showDeleted=true" : "");
+            return buildEmployeesRedirect(page, showDeleted, workplaceId, employeeId);
         }
     }
 
@@ -305,6 +318,7 @@ public class AdminController {
                                       @RequestParam boolean active,
                                       @RequestParam(defaultValue = "1") int page,
                                       @RequestParam(defaultValue = "false") boolean showDeleted,
+                                      @RequestParam(required = false) Long workplaceId,
                                       RedirectAttributes redirectAttributes,
                                       Principal principal) {
         try {
@@ -313,12 +327,13 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
-        return "redirect:/employees?page=" + page + (showDeleted ? "&showDeleted=true" : "");
+        return buildEmployeesRedirect(page, showDeleted, workplaceId, null);
     }
 
     @PostMapping("/employees/{employeeId}/delete")
     public String deleteEmployee(@PathVariable Long employeeId,
                                  @RequestParam(defaultValue = "1") int page,
+                                 @RequestParam(required = false) Long workplaceId,
                                  RedirectAttributes redirectAttributes,
                                  Principal principal) {
         try {
@@ -327,12 +342,13 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
-        return "redirect:/employees?page=" + page;
+        return buildEmployeesRedirect(page, false, workplaceId, null);
     }
 
     @PostMapping("/employees/{employeeId}/restore")
     public String restoreEmployee(@PathVariable Long employeeId,
                                   @RequestParam(defaultValue = "1") int page,
+                                  @RequestParam(required = false) Long workplaceId,
                                   RedirectAttributes redirectAttributes,
                                   Principal principal) {
         try {
@@ -341,13 +357,14 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
-        return "redirect:/employees?showDeleted=true&page=" + page;
+        return buildEmployeesRedirect(page, true, workplaceId, null);
     }
 
     @PostMapping("/employees/{employeeId}/device-reset")
     public String resetEmployeeDevice(@PathVariable Long employeeId,
                                       @RequestParam(defaultValue = "1") int page,
                                       @RequestParam(defaultValue = "false") boolean showDeleted,
+                                      @RequestParam(required = false) Long workplaceId,
                                       RedirectAttributes redirectAttributes,
                                       Principal principal) {
         try {
@@ -356,7 +373,21 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
-        return "redirect:/employees?page=" + page + (showDeleted ? "&showDeleted=true" : "");
+        return buildEmployeesRedirect(page, showDeleted, workplaceId, null);
+    }
+
+    private String buildEmployeesRedirect(int page, boolean showDeleted, Long workplaceId, Long editId) {
+        StringBuilder redirect = new StringBuilder("redirect:/employees?page=").append(page);
+        if (showDeleted) {
+            redirect.append("&showDeleted=true");
+        }
+        if (workplaceId != null) {
+            redirect.append("&workplaceId=").append(workplaceId);
+        }
+        if (editId != null) {
+            redirect.append("&editId=").append(editId);
+        }
+        return redirect.toString();
     }
 
     private void validateCreateEmployeeForm(EmployeeForm form, BindingResult bindingResult) {

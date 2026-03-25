@@ -42,7 +42,7 @@
                 <div class="action-row">
                     <span class="pill neutral" th:text="${monthlySummary.monthLabel()}">2026년 3월</span>
                     <a class="ghost-link"
-                       th:href="@{/attendance/monthly/excel(year=${selectedMonth.year}, month=${selectedMonth.monthValue})}">
+                       th:href="@{/attendance/monthly/excel(year=${selectedMonth.year}, month=${selectedMonth.monthValue}, workplaceId=${selectedWorkplaceId})}">
                         엑셀 다운로드
                     </a>
                 </div>
@@ -55,6 +55,17 @@
                 <label>
                     월
                     <input type="number" name="month" min="1" max="12" th:value="${selectedMonth.monthValue}">
+                </label>
+                <label>
+                    사업장
+                    <select name="workplaceId">
+                        <option value="">전체</option>
+                        <option value="0" th:selected="${selectedWorkplaceId != null and selectedWorkplaceId == 0}">본사</option>
+                        <option th:each="workplace : ${workplaceOptions}"
+                                th:value="${workplace.id()}"
+                                th:selected="${selectedWorkplaceId != null and selectedWorkplaceId == workplace.id()}"
+                                th:text="${workplace.name()}">사업장</option>
+                    </select>
                 </label>
                 <button type="submit" class="primary-button">조회하기</button>
             </form>
@@ -93,6 +104,7 @@
                 <tr>
                     <th>사번</th>
                     <th>이름</th>
+                    <th>사업장</th>
                     <th>권한</th>
                     <th>출근일수</th>
                     <th>지각일수</th>
@@ -106,11 +118,12 @@
                     <td th:text="${employee.employeeCode()}">EMP001</td>
                     <td>
                         <a class="employee-name-link"
-                           th:href="@{/attendance/monthly(year=${selectedMonth.year}, month=${selectedMonth.monthValue}, employeeCode=${employee.employeeCode()})}"
+                           th:href="@{/attendance/monthly(year=${selectedMonth.year}, month=${selectedMonth.monthValue}, employeeCode=${employee.employeeCode()}, workplaceId=${selectedWorkplaceId})}"
                            th:text="${employee.employeeName()}">
                             홍길동
                         </a>
                     </td>
+                    <td th:text="${employee.workplaceName()}">본사</td>
                     <td th:text="${employee.role()}">EMPLOYEE</td>
                     <td th:text="${employee.attendanceDays()}">0</td>
                     <td th:text="${employee.lateDays()}">0</td>
@@ -140,7 +153,7 @@
                     </span>
                     <a class="ghost-link"
                        th:if="${selectedEmployeeCode != null and !#strings.isEmpty(selectedEmployeeCode)}"
-                       th:href="@{/attendance/monthly(year=${selectedMonth.year}, month=${selectedMonth.monthValue})}">
+                       th:href="@{/attendance/monthly(year=${selectedMonth.year}, month=${selectedMonth.monthValue}, workplaceId=${selectedWorkplaceId})}">
                         선택 해제
                     </a>
                 </div>
@@ -159,7 +172,11 @@
                                 <span th:text="${detail.employeeName()}">홍길동</span>
                                 <small th:text="${detail.employeeCode()}">EMP001</small>
                             </h3>
-                            <p th:text="${detail.role()}">EMPLOYEE</p>
+                            <p>
+                                <span th:text="${detail.workplaceName()}">본사</span>
+                                <span> · </span>
+                                <span th:text="${detail.role()}">EMPLOYEE</span>
+                            </p>
                         </div>
                         <div class="employee-detail-metrics">
                             <span class="pill neutral" th:text="'출근 ' + ${detail.attendanceDays()} + '일'">출근 0일</span>
@@ -213,6 +230,7 @@
                     <th>날짜</th>
                     <th>사번</th>
                     <th>이름</th>
+                    <th>사업장</th>
                     <th>권한</th>
                     <th>상태</th>
                     <th>출근 시간</th>
@@ -225,6 +243,7 @@
                     <td th:text="${record.attendanceDate()}">2026.03.22</td>
                     <td th:text="${record.employeeCode()}">EMP001</td>
                     <td th:text="${record.employeeName()}">홍길동</td>
+                    <td th:text="${record.workplaceName()}">본사</td>
                     <td th:text="${record.role()}">EMPLOYEE</td>
                     <td>
                         <span class="pill"
