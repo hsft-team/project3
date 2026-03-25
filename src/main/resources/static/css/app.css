@@ -603,6 +603,14 @@ th {
     z-index: 50;
 }
 
+.employee-editor-modal .employee-editor-panel {
+    width: min(760px, calc(100vw - 32px));
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    margin: 0;
+    box-shadow: 0 28px 60px rgba(15, 23, 42, 0.18);
+}
+
 .employee-detail-modal-card {
     width: min(880px, calc(100vw - 40px));
     max-height: calc(100vh - 56px);
@@ -763,17 +771,42 @@ body.modal-open::before {
     position: relative;
 }
 
-body.modal-open .employee-editor-panel {
+body.confirm-open {
+    overflow: hidden;
+}
+
+.confirm-backdrop {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: min(760px, calc(100vw - 32px));
-    max-height: calc(100vh - 48px);
-    overflow-y: auto;
-    z-index: 50;
-    margin: 0;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.48);
+    backdrop-filter: blur(4px);
+    z-index: 70;
+}
+
+.confirm-dialog {
+    width: min(440px, calc(100vw - 32px));
+    padding: 28px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(219, 228, 240, 0.9);
     box-shadow: 0 28px 60px rgba(15, 23, 42, 0.18);
+}
+
+.confirm-dialog h3 {
+    margin: 0 0 10px;
+}
+
+.confirm-dialog p {
+    margin: 0 0 20px;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.confirm-dialog .button-row {
+    justify-content: flex-end;
 }
 
 @media (max-width: 1024px) {
@@ -820,7 +853,7 @@ body.modal-open .employee-editor-panel {
         flex-direction: column;
     }
 
-    body.modal-open .employee-editor-panel {
+    .employee-editor-modal .employee-editor-panel {
         width: calc(100vw - 20px);
         max-height: calc(100vh - 20px);
     }

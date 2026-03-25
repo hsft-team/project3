@@ -117,7 +117,7 @@
                 <tr th:each="employee : ${monthlyEmployees}">
                     <td th:text="${employee.employeeCode()}">EMP001</td>
                     <td>
-                        <a class="employee-name-link"
+                        <a class="employee-name-link monthly-detail-link"
                            th:href="@{/attendance/monthly(year=${selectedMonth.year}, month=${selectedMonth.monthValue}, employeeCode=${employee.employeeCode()}, workplaceId=${selectedWorkplaceId})}"
                            th:text="${employee.employeeName()}">
                             홍길동
@@ -141,32 +141,6 @@
                 </tr>
                 </tbody>
             </table>
-        </section>
-
-        <section class="panel">
-            <div class="panel-header">
-                <h2>직원별 월간 출근 상세</h2>
-                <div class="action-row">
-                    <span class="pill neutral"
-                          th:text="${selectedEmployeeCode != null and !#strings.isEmpty(selectedEmployeeCode)} ? ${selectedEmployeeCode} : '직원 선택 필요'">
-                        직원 선택 필요
-                    </span>
-                    <a class="ghost-link"
-                       th:if="${selectedEmployeeCode != null and !#strings.isEmpty(selectedEmployeeCode)}"
-                       th:href="@{/attendance/monthly(year=${selectedMonth.year}, month=${selectedMonth.monthValue}, workplaceId=${selectedWorkplaceId})}">
-                        선택 해제
-                    </a>
-                </div>
-            </div>
-            <div class="empty-state" th:if="${selectedEmployeeDetail == null and (selectedEmployeeCode == null or #strings.isEmpty(selectedEmployeeCode))}">
-                직원별 월간 요약에서 이름을 클릭하면 해당 직원의 상세 내역만 볼 수 있습니다.
-            </div>
-            <div class="empty-state" th:if="${selectedEmployeeDetail == null and selectedEmployeeCode != null and !#strings.isEmpty(selectedEmployeeCode)}">
-                선택한 직원의 월간 출근 상세 내역이 없습니다.
-            </div>
-            <div class="employee-detail-grid" th:if="${selectedEmployeeDetail != null}">
-                <div class="empty-state">상세 내역이 레이어 팝업으로 열려 있습니다.</div>
-            </div>
         </section>
 
         <section class="panel">
@@ -227,6 +201,7 @@
                 <h2>직원별 월간 출근 상세</h2>
             </div>
             <a class="ghost-link"
+               data-restore-scroll="true"
                th:href="@{/attendance/monthly(year=${selectedMonth.year}, month=${selectedMonth.monthValue}, workplaceId=${selectedWorkplaceId})}">
                 닫기
             </a>
@@ -281,5 +256,27 @@
         </div>
     </article>
 </div>
+
+<script th:src="@{/js/admin-ui.js}"></script>
+<script th:inline="javascript">
+    document.addEventListener('DOMContentLoaded', function () {
+        const storageKey = 'monthly-attendance-scroll-y';
+        const links = document.querySelectorAll('.monthly-detail-link, [data-restore-scroll="true"]');
+        const savedScroll = window.sessionStorage.getItem(storageKey);
+
+        if (savedScroll !== null) {
+            window.requestAnimationFrame(function () {
+                window.scrollTo(0, Number(savedScroll));
+                window.sessionStorage.removeItem(storageKey);
+            });
+        }
+
+        links.forEach(function (link) {
+            link.addEventListener('click', function () {
+                window.sessionStorage.setItem(storageKey, String(window.scrollY));
+            });
+        });
+    });
+</script>
 </body>
 </html>

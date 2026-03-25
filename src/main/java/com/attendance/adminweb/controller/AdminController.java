@@ -117,6 +117,7 @@ public class AdminController {
 
     @GetMapping("/employees")
     public String employees(@RequestParam(required = false) Long editId,
+                            @RequestParam(defaultValue = "false") boolean createMode,
                             @RequestParam(defaultValue = "1") int page,
                             @RequestParam(defaultValue = "false") boolean showDeleted,
                             @RequestParam(required = false) Long workplaceId,
@@ -137,12 +138,15 @@ public class AdminController {
         model.addAttribute("workplaceScopedAdmin", adminService.isWorkplaceScopedAdmin(principal.getName()));
         model.addAttribute("canManageAdminRoles", adminService.canManageAdminRoles(principal.getName()));
         model.addAttribute("workplaceOptions", adminService.getWorkplaceOptions(principal.getName()));
+        boolean employeeModalOpen = editId != null || createMode || Boolean.TRUE.equals(model.asMap().get("createMode"));
         if (!model.containsAttribute("employeeForm")) {
             model.addAttribute("employeeForm", editId == null
                     ? adminService.getEmployeeFormForCreate()
                     : adminService.getEmployeeFormForEdit(principal.getName(), editId));
         }
+        model.addAttribute("createMode", createMode);
         model.addAttribute("editing", editId != null);
+        model.addAttribute("employeeModalOpen", employeeModalOpen);
         return "employees";
     }
 
@@ -258,7 +262,8 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.employeeForm", bindingResult);
             redirectAttributes.addFlashAttribute("employeeForm", form);
             redirectAttributes.addFlashAttribute("editing", false);
-            return buildEmployeesRedirect(page, showDeleted, workplaceId, null);
+            redirectAttributes.addFlashAttribute("createMode", true);
+            return buildEmployeesRedirect(page, showDeleted, workplaceId, null, true);
         }
 
         try {
@@ -267,9 +272,11 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
             redirectAttributes.addFlashAttribute("employeeForm", form);
+            redirectAttributes.addFlashAttribute("createMode", true);
+            return buildEmployeesRedirect(page, showDeleted, workplaceId, null, true);
         }
 
-        return buildEmployeesRedirect(page, showDeleted, workplaceId, null);
+        return buildEmployeesRedirect(page, showDeleted, workplaceId, null, false);
     }
 
     @PostMapping("/employees/upload")
@@ -313,18 +320,18 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.employeeForm", bindingResult);
             redirectAttributes.addFlashAttribute("employeeForm", form);
             redirectAttributes.addFlashAttribute("editing", true);
-            return buildEmployeesRedirect(page, showDeleted, workplaceId, employeeId);
+            return buildEmployeesRedirect(page, showDeleted, workplaceId, employeeId, false);
         }
 
         try {
             adminService.updateEmployee(principal.getName(), employeeId, form);
             redirectAttributes.addFlashAttribute("message", "직원 정보가 수정되었습니다.");
-            return buildEmployeesRedirect(page, showDeleted, workplaceId, null);
+            return buildEmployeesRedirect(page, showDeleted, workplaceId, null, false);
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
             redirectAttributes.addFlashAttribute("employeeForm", form);
             redirectAttributes.addFlashAttribute("editing", true);
-            return buildEmployeesRedirect(page, showDeleted, workplaceId, employeeId);
+            return buildEmployeesRedirect(page, showDeleted, workplaceId, employeeId, false);
         }
     }
 
@@ -342,7 +349,7 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
-        return buildEmployeesRedirect(page, showDeleted, workplaceId, null);
+        return buildEmployeesRedirect(page, showDeleted, workplaceId, null, false);
     }
 
     @PostMapping("/employees/{employeeId}/delete")
@@ -357,7 +364,7 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
-        return buildEmployeesRedirect(page, false, workplaceId, null);
+        return buildEmployeesRedirect(page, false, workplaceId, null, false);
     }
 
     @PostMapping("/employees/{employeeId}/restore")
@@ -372,7 +379,7 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
-        return buildEmployeesRedirect(page, true, workplaceId, null);
+        return buildEmployeesRedirect(page, true, workplaceId, null, false);
     }
 
     @PostMapping("/employees/{employeeId}/device-reset")
@@ -388,10 +395,10 @@ public class AdminController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirectAttributes.addFlashAttribute("employeeErrorMessage", exception.getMessage());
         }
-        return buildEmployeesRedirect(page, showDeleted, workplaceId, null);
+        return buildEmployeesRedirect(page, showDeleted, workplaceId, null, false);
     }
 
-    private String buildEmployeesRedirect(int page, boolean showDeleted, Long workplaceId, Long editId) {
+    private String buildEmployeesRedirect(int page, boolean showDeleted, Long workplaceId, Long editId, boolean createMode) {
         StringBuilder redirect = new StringBuilder("redirect:/employees?page=").append(page);
         if (showDeleted) {
             redirect.append("&showDeleted=true");
@@ -401,6 +408,9 @@ public class AdminController {
         }
         if (editId != null) {
             redirect.append("&editId=").append(editId);
+        }
+        if (createMode) {
+            redirect.append("&createMode=true");
         }
         return redirect.toString();
     }
