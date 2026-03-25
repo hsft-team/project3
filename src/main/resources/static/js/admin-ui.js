@@ -33,6 +33,11 @@
                 return;
             }
 
+            const method = (form.getAttribute('method') || 'get').toLowerCase();
+            if (method !== 'post') {
+                return;
+            }
+
             const submitter = event.submitter || findSubmitter(form);
             if (form.dataset.skipConfirm === 'true' || submitter?.dataset.skipConfirm === 'true') {
                 return;
