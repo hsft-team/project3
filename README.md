@@ -112,5 +112,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\deploy-prod.ps1
 ## 참고
 
 - DB 스키마는 `../backend`의 `employees`, `companies`, `company_settings`, `attendance_records`를 사용합니다.
+- SQL 리포트 작성용 테이블 명세: [/Users/hyeonseobkim/workspace/attendance-app/backend/docs/DB_TABLE_SPEC.md](/Users/hyeonseobkim/workspace/attendance-app/backend/docs/DB_TABLE_SPEC.md)
 - 관리자 웹은 회사명/좌표/허용 반경을 읽고, 위치 좌표와 허용 반경을 수정할 수 있습니다.
 - 백엔드와 동시에 실행할 수 있도록 기본 포트는 `8081`입니다.
