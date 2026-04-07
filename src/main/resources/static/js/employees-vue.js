@@ -574,7 +574,7 @@
                                                 <div class="action-row">
                                                     <button v-if="!employee.deleted" type="button" class="ghost-link small-link" :disabled="submitting" @click="openEditModal(employee)">수정</button>
 
-                                                    <button v-if="!employee.deleted && employee.role !== 'ADMIN'" type="button" class="ghost-link" :disabled="submitting" @click="inviteEmployee(employee)">초대생성</button>
+                                                    <button v-if="!employee.deleted" type="button" class="ghost-link" :disabled="submitting" @click="inviteEmployee(employee)">초대생성</button>
 
                                                     <button v-if="!employee.deleted && employee.deviceRegistered" type="button" class="ghost-link" :disabled="submitting" @click="resetDevice(employee)">단말 초기화</button>
 
