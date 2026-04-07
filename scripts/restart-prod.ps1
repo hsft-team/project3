@@ -7,10 +7,30 @@ $jarPath = Join-Path $projectRoot "target\admin-web-0.0.1-SNAPSHOT.jar"
 $outLog = Join-Path $projectRoot "admin-web.out.log"
 $errLog = Join-Path $projectRoot "admin-web.err.log"
 
+function Invoke-Step {
+    param(
+        [Parameter(Mandatory = $true)][string]$Command,
+        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [Parameter(Mandatory = $true)][string]$FailureMessage
+    )
+
+    & $Command @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw $FailureMessage
+    }
+}
+
 Write-Host "==> Admin web production restart started" -ForegroundColor Cyan
 Write-Host "Project root: $projectRoot"
 
 Set-Location $projectRoot
+
+$currentCommit = (git rev-parse HEAD).Trim()
+if (-not $currentCommit) {
+    throw "Could not resolve current git commit."
+}
+
+Write-Host "==> Restarting current commit: $currentCommit" -ForegroundColor Yellow
 
 Write-Host "==> Stopping existing admin-web process" -ForegroundColor Yellow
 Get-CimInstance Win32_Process |
@@ -25,7 +45,7 @@ Get-CimInstance Win32_Process |
 Start-Sleep -Seconds 2
 
 Write-Host "==> Building jar" -ForegroundColor Yellow
-mvn clean package
+Invoke-Step -Command "mvn" -Arguments @("clean", "package") -FailureMessage "mvn clean package failed."
 
 if (-not (Test-Path $jarPath)) {
     throw "Jar file was not created. Expected path: $jarPath"
@@ -61,6 +81,7 @@ if ([string]::IsNullOrWhiteSpace($portCheck)) {
 }
 
 Write-Host "==> Admin web production restart finished" -ForegroundColor Green
+Write-Host "Restarted commit: $currentCommit"
 Write-Host "Login URL: http://localhost:8081/login"
 Write-Host "Output log: $outLog"
 Write-Host "Error log: $errLog"

@@ -10,6 +10,19 @@ $jarPath = Join-Path $projectRoot "target\admin-web-0.0.1-SNAPSHOT.jar"
 $outLog = Join-Path $projectRoot "admin-web.out.log"
 $errLog = Join-Path $projectRoot "admin-web.err.log"
 
+function Invoke-Step {
+    param(
+        [Parameter(Mandatory = $true)][string]$Command,
+        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [Parameter(Mandatory = $true)][string]$FailureMessage
+    )
+
+    & $Command @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw $FailureMessage
+    }
+}
+
 Write-Host "==> Admin web production deploy started" -ForegroundColor Cyan
 Write-Host "Project root: $projectRoot"
 
@@ -17,10 +30,17 @@ Set-Location $projectRoot
 
 if (-not $SkipPull) {
     Write-Host "==> Pulling latest code from origin/$Branch" -ForegroundColor Yellow
-    git fetch origin $Branch
-    git checkout $Branch
-    git pull origin $Branch
+    Invoke-Step -Command "git" -Arguments @("fetch", "origin", $Branch) -FailureMessage "git fetch failed."
+    Invoke-Step -Command "git" -Arguments @("checkout", $Branch) -FailureMessage "git checkout failed."
+    Invoke-Step -Command "git" -Arguments @("pull", "origin", $Branch) -FailureMessage "git pull failed."
 }
+
+$currentCommit = (git rev-parse HEAD).Trim()
+if (-not $currentCommit) {
+    throw "Could not resolve current git commit."
+}
+
+Write-Host "==> Deploying commit: $currentCommit" -ForegroundColor Yellow
 
 Write-Host "==> Stopping existing admin-web process" -ForegroundColor Yellow
 Get-CimInstance Win32_Process |
@@ -35,7 +55,7 @@ Get-CimInstance Win32_Process |
 Start-Sleep -Seconds 2
 
 Write-Host "==> Building jar" -ForegroundColor Yellow
-mvn clean package
+Invoke-Step -Command "mvn" -Arguments @("clean", "package") -FailureMessage "mvn clean package failed."
 
 if (-not (Test-Path $jarPath)) {
     throw "Jar file was not created. Expected path: $jarPath"
@@ -71,6 +91,7 @@ if ([string]::IsNullOrWhiteSpace($portCheck)) {
 }
 
 Write-Host "==> Admin web production deploy finished" -ForegroundColor Green
+Write-Host "Deployed commit: $currentCommit"
 Write-Host "Login URL: http://localhost:8081/login"
 Write-Host "Output log: $outLog"
 Write-Host "Error log: $errLog"
