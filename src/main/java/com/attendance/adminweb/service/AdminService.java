@@ -365,6 +365,81 @@ public class AdminService {
                             where se.employee_code = 'EMP001'
                             order by sar.attendance_date desc
                             """
+                    ),
+                    new SqlSnippet(
+                            "monthly-attendance-pivot",
+                            "월별 출근시간 피벗",
+                            "사업장 직원 전체를 왼쪽에 두고 1일부터 말일까지 출근 시간을 가로 컬럼으로 펼칩니다.",
+                            """
+                            WITH params AS (
+                                SELECT DATE '2026-04-01' AS month_start
+                            ),
+                            month_days AS (
+                                SELECT generate_series(
+                                    date_trunc('month', month_start)::date,
+                                    (date_trunc('month', month_start) + INTERVAL '1 month - 1 day')::date,
+                                    INTERVAL '1 day'
+                                )::date AS day_date
+                                FROM params
+                            ),
+                            base AS (
+                                SELECT
+                                    se.id AS employee_id,
+                                    se.employee_code,
+                                    se.name AS employee_name,
+                                    COALESCE(sw.name, '본사') AS workplace_name,
+                                    EXTRACT(DAY FROM d.day_date)::int AS day_no,
+                                    CASE
+                                        WHEN sar.id IS NULL THEN ''
+                                        ELSE to_char(sar.check_in_time, 'HH24:MI')
+                                    END AS attendance_time
+                                FROM scoped_employees se
+                                CROSS JOIN month_days d
+                                LEFT JOIN scoped_workplace sw
+                                    ON sw.id = se.workplace_id
+                                LEFT JOIN scoped_attendance_records sar
+                                    ON sar.employee_id = se.id
+                                   AND sar.attendance_date = d.day_date
+                            )
+                            SELECT
+                                employee_code AS "사번",
+                                employee_name AS "이름",
+                                workplace_name AS "사업장",
+                                MAX(CASE WHEN day_no = 1  THEN attendance_time END) AS "1일",
+                                MAX(CASE WHEN day_no = 2  THEN attendance_time END) AS "2일",
+                                MAX(CASE WHEN day_no = 3  THEN attendance_time END) AS "3일",
+                                MAX(CASE WHEN day_no = 4  THEN attendance_time END) AS "4일",
+                                MAX(CASE WHEN day_no = 5  THEN attendance_time END) AS "5일",
+                                MAX(CASE WHEN day_no = 6  THEN attendance_time END) AS "6일",
+                                MAX(CASE WHEN day_no = 7  THEN attendance_time END) AS "7일",
+                                MAX(CASE WHEN day_no = 8  THEN attendance_time END) AS "8일",
+                                MAX(CASE WHEN day_no = 9  THEN attendance_time END) AS "9일",
+                                MAX(CASE WHEN day_no = 10 THEN attendance_time END) AS "10일",
+                                MAX(CASE WHEN day_no = 11 THEN attendance_time END) AS "11일",
+                                MAX(CASE WHEN day_no = 12 THEN attendance_time END) AS "12일",
+                                MAX(CASE WHEN day_no = 13 THEN attendance_time END) AS "13일",
+                                MAX(CASE WHEN day_no = 14 THEN attendance_time END) AS "14일",
+                                MAX(CASE WHEN day_no = 15 THEN attendance_time END) AS "15일",
+                                MAX(CASE WHEN day_no = 16 THEN attendance_time END) AS "16일",
+                                MAX(CASE WHEN day_no = 17 THEN attendance_time END) AS "17일",
+                                MAX(CASE WHEN day_no = 18 THEN attendance_time END) AS "18일",
+                                MAX(CASE WHEN day_no = 19 THEN attendance_time END) AS "19일",
+                                MAX(CASE WHEN day_no = 20 THEN attendance_time END) AS "20일",
+                                MAX(CASE WHEN day_no = 21 THEN attendance_time END) AS "21일",
+                                MAX(CASE WHEN day_no = 22 THEN attendance_time END) AS "22일",
+                                MAX(CASE WHEN day_no = 23 THEN attendance_time END) AS "23일",
+                                MAX(CASE WHEN day_no = 24 THEN attendance_time END) AS "24일",
+                                MAX(CASE WHEN day_no = 25 THEN attendance_time END) AS "25일",
+                                MAX(CASE WHEN day_no = 26 THEN attendance_time END) AS "26일",
+                                MAX(CASE WHEN day_no = 27 THEN attendance_time END) AS "27일",
+                                MAX(CASE WHEN day_no = 28 THEN attendance_time END) AS "28일",
+                                MAX(CASE WHEN day_no = 29 THEN attendance_time END) AS "29일",
+                                MAX(CASE WHEN day_no = 30 THEN attendance_time END) AS "30일",
+                                MAX(CASE WHEN day_no = 31 THEN attendance_time END) AS "31일"
+                            FROM base
+                            GROUP BY employee_code, employee_name, workplace_name
+                            ORDER BY employee_name, employee_code
+                            """
                     )
             );
         }
@@ -432,6 +507,87 @@ public class AdminService {
                         left join workplaces w on w.id = e.workplace_id
                         where e.employee_code = 'EMP001'
                         order by ar.attendance_date desc
+                        """
+                ),
+                new SqlSnippet(
+                        "monthly-attendance-pivot",
+                        "월별 출근시간 피벗",
+                        "회사 전체 직원을 왼쪽에 두고 1일부터 말일까지 출근 시간을 가로 컬럼으로 펼칩니다.",
+                        """
+                        WITH params AS (
+                            SELECT
+                                1::bigint AS company_id,
+                                DATE '2026-04-01' AS month_start
+                        ),
+                        month_days AS (
+                            SELECT generate_series(
+                                date_trunc('month', month_start)::date,
+                                (date_trunc('month', month_start) + INTERVAL '1 month - 1 day')::date,
+                                INTERVAL '1 day'
+                            )::date AS day_date
+                            FROM params
+                        ),
+                        base AS (
+                            SELECT
+                                e.id AS employee_id,
+                                e.employee_code,
+                                e.name AS employee_name,
+                                COALESCE(w.name, '본사') AS workplace_name,
+                                EXTRACT(DAY FROM d.day_date)::int AS day_no,
+                                CASE
+                                    WHEN ar.id IS NULL THEN ''
+                                    ELSE to_char(ar.check_in_time, 'HH24:MI')
+                                END AS attendance_time
+                            FROM employees e
+                            CROSS JOIN month_days d
+                            LEFT JOIN workplaces w
+                                ON w.id = e.workplace_id
+                            LEFT JOIN attendance_records ar
+                                ON ar.employee_id = e.id
+                               AND ar.attendance_date = d.day_date
+                            JOIN params p
+                                ON p.company_id = e.company_id
+                            WHERE e.deleted = false
+                              AND e.active = true
+                        )
+                        SELECT
+                            employee_code AS "사번",
+                            employee_name AS "이름",
+                            workplace_name AS "사업장",
+                            MAX(CASE WHEN day_no = 1  THEN attendance_time END) AS "1일",
+                            MAX(CASE WHEN day_no = 2  THEN attendance_time END) AS "2일",
+                            MAX(CASE WHEN day_no = 3  THEN attendance_time END) AS "3일",
+                            MAX(CASE WHEN day_no = 4  THEN attendance_time END) AS "4일",
+                            MAX(CASE WHEN day_no = 5  THEN attendance_time END) AS "5일",
+                            MAX(CASE WHEN day_no = 6  THEN attendance_time END) AS "6일",
+                            MAX(CASE WHEN day_no = 7  THEN attendance_time END) AS "7일",
+                            MAX(CASE WHEN day_no = 8  THEN attendance_time END) AS "8일",
+                            MAX(CASE WHEN day_no = 9  THEN attendance_time END) AS "9일",
+                            MAX(CASE WHEN day_no = 10 THEN attendance_time END) AS "10일",
+                            MAX(CASE WHEN day_no = 11 THEN attendance_time END) AS "11일",
+                            MAX(CASE WHEN day_no = 12 THEN attendance_time END) AS "12일",
+                            MAX(CASE WHEN day_no = 13 THEN attendance_time END) AS "13일",
+                            MAX(CASE WHEN day_no = 14 THEN attendance_time END) AS "14일",
+                            MAX(CASE WHEN day_no = 15 THEN attendance_time END) AS "15일",
+                            MAX(CASE WHEN day_no = 16 THEN attendance_time END) AS "16일",
+                            MAX(CASE WHEN day_no = 17 THEN attendance_time END) AS "17일",
+                            MAX(CASE WHEN day_no = 18 THEN attendance_time END) AS "18일",
+                            MAX(CASE WHEN day_no = 19 THEN attendance_time END) AS "19일",
+                            MAX(CASE WHEN day_no = 20 THEN attendance_time END) AS "20일",
+                            MAX(CASE WHEN day_no = 21 THEN attendance_time END) AS "21일",
+                            MAX(CASE WHEN day_no = 22 THEN attendance_time END) AS "22일",
+                            MAX(CASE WHEN day_no = 23 THEN attendance_time END) AS "23일",
+                            MAX(CASE WHEN day_no = 24 THEN attendance_time END) AS "24일",
+                            MAX(CASE WHEN day_no = 25 THEN attendance_time END) AS "25일",
+                            MAX(CASE WHEN day_no = 26 THEN attendance_time END) AS "26일",
+                            MAX(CASE WHEN day_no = 27 THEN attendance_time END) AS "27일",
+                            MAX(CASE WHEN day_no = 28 THEN attendance_time END) AS "28일",
+                            MAX(CASE WHEN day_no = 29 THEN attendance_time END) AS "29일",
+                            MAX(CASE WHEN day_no = 30 THEN attendance_time END) AS "30일",
+                            MAX(CASE WHEN day_no = 31 THEN attendance_time END) AS "31일"
+                        FROM base
+                        GROUP BY employee_code, employee_name, workplace_name
+                        ORDER BY employee_name, employee_code
                         """
                 )
         );
