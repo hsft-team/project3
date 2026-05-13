@@ -275,6 +275,63 @@ public class AdminService {
         }
     }
 
+    public byte[] createWorkRequestUploadTemplate() {
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("work-requests");
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setFillForegroundColor((short) 22);
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"사번", "날짜", "유형", "반차구분", "유연근무분", "사유"};
+            for (int index = 0; index < headers.length; index++) {
+                Cell cell = headerRow.createCell(index);
+                cell.setCellValue(headers[index]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            Row vacationRow = sheet.createRow(1);
+            vacationRow.createCell(0).setCellValue("EMP001");
+            vacationRow.createCell(1).setCellValue("2026-05-20");
+            vacationRow.createCell(2).setCellValue("휴가");
+            vacationRow.createCell(3).setCellValue("");
+            vacationRow.createCell(4).setCellValue("");
+            vacationRow.createCell(5).setCellValue("연차 휴가");
+
+            Row halfDayRow = sheet.createRow(2);
+            halfDayRow.createCell(0).setCellValue("EMP002");
+            halfDayRow.createCell(1).setCellValue("2026-05-21");
+            halfDayRow.createCell(2).setCellValue("반차");
+            halfDayRow.createCell(3).setCellValue("오후");
+            halfDayRow.createCell(4).setCellValue("");
+            halfDayRow.createCell(5).setCellValue("오후 반차");
+
+            Row flexibleRow = sheet.createRow(3);
+            flexibleRow.createCell(0).setCellValue("EMP002");
+            flexibleRow.createCell(1).setCellValue("2026-05-21");
+            flexibleRow.createCell(2).setCellValue("유연근무");
+            flexibleRow.createCell(3).setCellValue("");
+            flexibleRow.createCell(4).setCellValue(60);
+            flexibleRow.createCell(5).setCellValue("1시간 유연근무");
+
+            for (int index = 0; index < headers.length; index++) {
+                sheet.autoSizeColumn(index);
+                sheet.setColumnWidth(index, Math.max(sheet.getColumnWidth(index), 4200));
+            }
+
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException exception) {
+            throw new IllegalStateException("근무 신청 엑셀 샘플 파일을 생성할 수 없습니다.", exception);
+        }
+    }
+
     public CompanyLocationView getCompanyLocation(String employeeCode) {
         return backendAdminLocationApiClient.getLocationSettings(employeeCode).toCompanyLocationView();
     }
@@ -727,6 +784,10 @@ public class AdminService {
 
     public void rejectWorkRequest(String employeeCode, Long requestId, String reviewNote) {
         backendAdminWorkRequestApiClient.rejectWorkRequest(employeeCode, requestId, reviewNote);
+    }
+
+    public void cancelWorkRequest(String employeeCode, Long requestId, String reviewNote) {
+        backendAdminWorkRequestApiClient.cancelWorkRequest(employeeCode, requestId, reviewNote);
     }
 
     public void createWorkRequest(String employeeCode, WorkRequestCreateForm form) {

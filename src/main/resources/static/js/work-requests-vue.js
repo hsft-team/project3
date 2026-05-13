@@ -158,8 +158,13 @@
                     }
                 },
                 async reviewRequest(requestId, action) {
+                    const actionLabel = action === 'approve' ? '승인' : action === 'reject' ? '반려' : '취소';
                     const reviewNote = window.prompt(
-                        action === 'approve' ? '승인 메모가 있으면 입력해 주세요.' : '반려 사유를 입력해 주세요.',
+                        action === 'approve'
+                            ? '승인 메모가 있으면 입력해 주세요.'
+                            : action === 'reject'
+                                ? '반려 사유를 입력해 주세요.'
+                                : '취소 사유가 있으면 입력해 주세요.',
                         ''
                     );
                     if (reviewNote === null) {
@@ -179,7 +184,7 @@
                         });
                         const result = await response.json();
                         if (!response.ok || !result.success) {
-                            throw new Error(result.message || '요청 처리에 실패했습니다.');
+                            throw new Error(result.message || `${actionLabel} 처리에 실패했습니다.`);
                         }
                         this.showFeedback(result.message, 'success');
                         await this.loadRequests();
@@ -440,6 +445,7 @@
                         <section class="panel">
                             <div class="panel-header">
                                 <h2>엑셀 일괄 추가</h2>
+                                <a class="ghost-link" href="/work-requests/upload-template">샘플 엑셀 다운로드</a>
                             </div>
                             <p class="section-copy">첫 번째 시트에 사번, 날짜, 유형, 반차구분, 유연근무분, 사유 순서로 입력해 주세요. 유형은 휴가, 반차, 유연근무를 사용할 수 있습니다.</p>
                             <form class="upload-form" @submit.prevent="submitUpload">
@@ -496,6 +502,9 @@
                                             <div class="button-row" v-if="request.status === 'PENDING'">
                                                 <button type="button" class="primary-button small-primary" :disabled="actingId === request.id" @click="reviewRequest(request.id, 'approve')">승인</button>
                                                 <button type="button" class="ghost-link" :disabled="actingId === request.id" @click="reviewRequest(request.id, 'reject')">반려</button>
+                                            </div>
+                                            <div class="button-row" v-else-if="request.status === 'APPROVED'">
+                                                <button type="button" class="ghost-link" :disabled="actingId === request.id" @click="reviewRequest(request.id, 'cancel')">취소</button>
                                             </div>
                                             <span v-else>-</span>
                                         </td>

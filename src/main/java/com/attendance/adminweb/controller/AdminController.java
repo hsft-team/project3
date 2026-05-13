@@ -420,6 +420,20 @@ public class AdminController {
         }
     }
 
+    @GetMapping("/work-requests/upload-template")
+    public ResponseEntity<ByteArrayResource> downloadWorkRequestTemplate() {
+        byte[] fileBytes = adminService.createWorkRequestUploadTemplate();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename("work-request-upload-template.xlsx", StandardCharsets.UTF_8)
+                        .build()
+                        .toString())
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentLength(fileBytes.length)
+                .body(new ByteArrayResource(fileBytes));
+    }
+
     @GetMapping("/settings/location/page-context")
     @ResponseBody
     public LocationSettingsPageContext locationSettingsPageContext(@RequestParam(required = false) Long workplaceId,
@@ -519,11 +533,24 @@ public class AdminController {
     @PostMapping("/work-requests/{requestId}/reject")
     @ResponseBody
     public ResponseEntity<EmployeeActionResponse> rejectWorkRequest(@PathVariable Long requestId,
-                                                                    @RequestParam(required = false) String reviewNote,
-                                                                    Principal principal) {
+                                                                     @RequestParam(required = false) String reviewNote,
+                                                                     Principal principal) {
         try {
             adminService.rejectWorkRequest(principal.getName(), requestId, reviewNote);
             return ResponseEntity.ok(new EmployeeActionResponse(true, "신청을 반려했습니다.", null));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/work-requests/{requestId}/cancel")
+    @ResponseBody
+    public ResponseEntity<EmployeeActionResponse> cancelWorkRequest(@PathVariable Long requestId,
+                                                                    @RequestParam(required = false) String reviewNote,
+                                                                    Principal principal) {
+        try {
+            adminService.cancelWorkRequest(principal.getName(), requestId, reviewNote);
+            return ResponseEntity.ok(new EmployeeActionResponse(true, "신청을 취소했습니다.", null));
         } catch (IllegalArgumentException | IllegalStateException exception) {
             return ResponseEntity.badRequest().body(new EmployeeActionResponse(false, exception.getMessage(), null));
         }

@@ -59,6 +59,10 @@ public class BackendAdminWorkRequestApiClient {
         submitReview(adminEmployeeCode, requestId, "/reject", reviewNote);
     }
 
+    public void cancelWorkRequest(String adminEmployeeCode, Long requestId, String reviewNote) {
+        submitReview(adminEmployeeCode, requestId, "/cancel", reviewNote);
+    }
+
     public void createWorkRequest(String adminEmployeeCode, WorkRequestCreateForm form) {
         try {
             restClient.post()
