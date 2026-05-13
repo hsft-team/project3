@@ -621,6 +621,10 @@
                                             <div class="button-row" v-else-if="request.status === 'APPROVED'">
                                                 <button type="button" class="ghost-link" :disabled="actingId === request.id" @click="reviewRequest(request.id, 'cancel')">취소</button>
                                             </div>
+                                            <div class="button-row" v-else-if="request.status === 'REJECTED'">
+                                                <button type="button" class="primary-button small-primary" :disabled="actingId === request.id" @click="reviewRequest(request.id, 'approve')">승인</button>
+                                                <button type="button" class="ghost-link" :disabled="actingId === request.id" @click="reviewRequest(request.id, 'cancel')">취소</button>
+                                            </div>
                                             <span v-else>-</span>
                                         </td>
                                     </tr>
