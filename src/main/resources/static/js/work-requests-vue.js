@@ -94,6 +94,9 @@
                 pendingCount() {
                     return this.filteredRequests.filter((request) => request.status === 'PENDING').length;
                 },
+                cancelRequestedCount() {
+                    return this.filteredRequests.filter((request) => request.status === 'CANCEL_REQUESTED').length;
+                },
                 calendarTitle() {
                     return `${this.calendarCursor.getFullYear()}년 ${this.calendarCursor.getMonth() + 1}월`;
                 },
@@ -133,6 +136,7 @@
                                 selected: dateKey === this.selectedDate,
                                 requests,
                                 pendingCount: requests.filter((request) => request.status === 'PENDING').length,
+                                cancelRequestedCount: requests.filter((request) => request.status === 'CANCEL_REQUESTED').length,
                                 approvedCount: requests.filter((request) => request.status === 'APPROVED').length,
                                 vacationCount: requests.filter((request) => request.requestType === 'VACATION').length,
                                 halfDayCount: requests.filter((request) => request.requestType === 'HALF_DAY').length,
@@ -156,7 +160,8 @@
                         halfDay: monthRequests.filter((request) => request.requestType === 'HALF_DAY').length,
                         earlyLeave: monthRequests.filter((request) => request.requestType === 'EARLY_LEAVE').length,
                         specialLeave: monthRequests.filter((request) => request.requestType === 'SPECIAL_LEAVE').length,
-                        pending: monthRequests.filter((request) => request.status === 'PENDING').length
+                        pending: monthRequests.filter((request) => request.status === 'PENDING').length,
+                        cancelRequested: monthRequests.filter((request) => request.status === 'CANCEL_REQUESTED').length
                     };
                 }
             },
@@ -433,6 +438,7 @@
                                 <span class="pill success">경조사 {{ monthSummary.specialLeave }}건</span>
                                 <span class="pill neutral">유연근무 {{ monthSummary.earlyLeave }}건</span>
                                 <span class="pill danger">대기 {{ monthSummary.pending }}건</span>
+                                <span class="pill warning">취소 요청 {{ monthSummary.cancelRequested }}건</span>
                             </div>
 
                             <div class="work-calendar-layout">
@@ -454,6 +460,7 @@
                                                 <span v-if="day.earlyLeaveCount" class="calendar-dot flex">유 {{ day.earlyLeaveCount }}</span>
                                             </span>
                                             <span class="calendar-pending" v-if="day.pendingCount">대기 {{ day.pendingCount }}</span>
+                                            <span class="calendar-pending" v-if="day.cancelRequestedCount">취소요청 {{ day.cancelRequestedCount }}</span>
                                         </button>
                                     </template>
                                 </div>
@@ -583,7 +590,10 @@
                         <section class="panel">
                             <div class="panel-header">
                                 <h2>신청 목록</h2>
-                                <span class="pill warning">대기 {{ pendingCount }}건</span>
+                                <div class="button-row">
+                                    <span class="pill warning">대기 {{ pendingCount }}건</span>
+                                    <span class="pill warning">취소 요청 {{ cancelRequestedCount }}건</span>
+                                </div>
                             </div>
                             <p class="section-copy" v-if="context?.workplaceScopedAdmin">사업장 관리자는 담당 사업장 직원의 신청만 확인할 수 있습니다.</p>
                             <p class="section-copy" v-else>휴가, 반차, 경조사, 유연근무 신청을 한 곳에서 승인하거나 반려할 수 있습니다.</p>
