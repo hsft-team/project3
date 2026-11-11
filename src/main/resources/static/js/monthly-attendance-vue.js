@@ -206,7 +206,7 @@
                         </form>
                     </aside>
 
-                    <main class="content">
+                    <main class="content monthly-content">
                         <div class="alert error" v-if="loadFailed">월별 출근 현황을 불러오지 못했습니다.</div>
                         <section class="page-header">
                             <div>
@@ -216,7 +216,7 @@
                             <p>{{ pageDescription }}</p>
                         </section>
 
-                        <section class="panel" v-if="ready">
+                        <section class="panel monthly-filter" v-if="ready">
                             <div class="panel-header">
                                 <h2>조회 월 선택</h2>
                                 <div class="action-row">
@@ -245,7 +245,7 @@
                             </form>
                         </section>
 
-                        <section class="card-grid">
+                        <section class="card-grid monthly-summary">
                             <article class="stat-card">
                                 <span>전체 직원</span>
                                 <strong>{{ data.summary.totalEmployees }}</strong>

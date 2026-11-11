@@ -338,7 +338,8 @@ textarea:focus {
     gap: 18px;
 }
 
-.dashboard-content {
+.dashboard-content,
+.monthly-content {
     min-width: 0;
     align-content: start;
     gap: 18px;
@@ -384,7 +385,8 @@ textarea:focus {
     border-radius: 10px;
 }
 
-.dashboard-content .dashboard-summary {
+.dashboard-content .dashboard-summary,
+.monthly-content .monthly-summary {
     grid-template-columns: repeat(5, minmax(120px, 1fr));
     gap: 10px;
     overflow-x: auto;
@@ -395,23 +397,85 @@ textarea:focus {
     min-width: 0;
 }
 
-.dashboard-summary .stat-card {
+.dashboard-summary .stat-card,
+.monthly-summary .stat-card {
     padding: 14px 16px;
     border-radius: 16px;
 }
 
-.dashboard-summary .stat-card span {
+.dashboard-summary .stat-card span,
+.monthly-summary .stat-card span {
     font-size: 13px;
     white-space: nowrap;
 }
 
-.dashboard-summary .stat-card strong {
+.dashboard-summary .stat-card strong,
+.monthly-summary .stat-card strong {
     margin-top: 4px;
     font-size: 26px;
 }
 
 .dashboard-summary .stat-card.selected {
     box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.3);
+}
+
+.monthly-content .monthly-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 20px;
+    padding: 14px 18px;
+    border-radius: 16px;
+}
+
+.monthly-filter .panel-header {
+    display: contents;
+}
+
+.monthly-filter h2 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.monthly-filter .filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    margin: 0;
+    order: 1;
+}
+
+.monthly-filter .action-row {
+    order: 2;
+    margin-left: auto;
+    flex-wrap: wrap;
+}
+
+.monthly-filter label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.monthly-filter input,
+.monthly-filter select {
+    padding: 8px 10px;
+    border-radius: 10px;
+}
+
+.monthly-filter input {
+    width: 90px;
+}
+
+.monthly-filter select {
+    width: 170px;
+    max-width: 55vw;
+}
+
+.monthly-filter .primary-button {
+    padding: 8px 14px;
+    border-radius: 10px;
 }
 
 .stat-link {
