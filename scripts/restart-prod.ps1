@@ -1,8 +1,11 @@
-Param()
+Param([string]$MavenHome = "")
 
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "build-tools.ps1")
+$mavenCommand = Resolve-MavenCommand -ProjectRoot $projectRoot -MavenHome $MavenHome
+Test-BuildTools -MavenCommand $mavenCommand
 $jarPath = Join-Path $projectRoot "target\admin-web-0.0.1-SNAPSHOT.jar"
 $outLog = Join-Path $projectRoot "admin-web.out.log"
 $errLog = Join-Path $projectRoot "admin-web.err.log"
@@ -51,7 +54,7 @@ Get-CimInstance Win32_Process |
 Start-Sleep -Seconds 2
 
 Write-Host "==> Building jar" -ForegroundColor Yellow
-Invoke-Step -Command "mvn" -Arguments @("clean", "package") -FailureMessage "mvn clean package failed."
+Invoke-Step -Command $mavenCommand -Arguments @("clean", "package") -FailureMessage "mvn clean package failed."
 
 if (-not (Test-Path $jarPath)) {
     throw "Jar file was not created. Expected path: $jarPath"
