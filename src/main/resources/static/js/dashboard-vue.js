@@ -185,7 +185,7 @@
                         </form>
                     </aside>
 
-                    <main class="content">
+                    <main class="content dashboard-content">
                         <section class="page-header">
                             <div>
                                 <div class="eyebrow">Dashboard</div>
@@ -196,12 +196,10 @@
 
                         <div class="alert error" v-if="loadFailed">오늘 출근 현황을 불러오지 못했습니다.</div>
 
-                        <section class="panel" v-if="ready">
-                            <div class="panel-header">
-                                <h2>사업장 필터</h2>
-                            </div>
+                        <section class="panel dashboard-workplace-filter" v-if="ready">
+                            <h2>사업장 필터</h2>
                             <form class="filter-form" @submit.prevent="applyWorkplaceFilter">
-                                <label>
+                                <label class="dashboard-workplace-field">
                                     사업장
                                     <select v-model="state.workplaceId">
                                         <option v-if="!context?.workplaceScopedAdmin" value="">전체</option>
@@ -213,7 +211,7 @@
                             </form>
                         </section>
 
-                        <section class="card-grid">
+                        <section class="card-grid dashboard-summary">
                             <button v-for="card in summaryCards"
                                     :key="card.key"
                                     type="button"

@@ -338,6 +338,82 @@ textarea:focus {
     gap: 18px;
 }
 
+.dashboard-content {
+    min-width: 0;
+    align-content: start;
+    gap: 18px;
+}
+
+.dashboard-content .dashboard-workplace-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 20px;
+    padding: 14px 18px;
+    border-radius: 16px;
+}
+
+.dashboard-workplace-filter h2 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.dashboard-workplace-filter .filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+
+.dashboard-workplace-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dashboard-workplace-field select {
+    width: 200px;
+    max-width: 55vw;
+    padding: 8px 12px;
+    border-radius: 10px;
+}
+
+.dashboard-workplace-filter .primary-button {
+    padding: 8px 16px;
+    border-radius: 10px;
+}
+
+.dashboard-content .dashboard-summary {
+    grid-template-columns: repeat(5, minmax(120px, 1fr));
+    gap: 10px;
+    overflow-x: auto;
+    padding: 2px 0 6px;
+}
+
+.dashboard-summary .stat-link {
+    min-width: 0;
+}
+
+.dashboard-summary .stat-card {
+    padding: 14px 16px;
+    border-radius: 16px;
+}
+
+.dashboard-summary .stat-card span {
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.dashboard-summary .stat-card strong {
+    margin-top: 4px;
+    font-size: 26px;
+}
+
+.dashboard-summary .stat-card.selected {
+    box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.3);
+}
+
 .stat-link {
     display: block;
     width: 100%;
